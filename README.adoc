@@ -23,7 +23,7 @@ link:https://www.python.org/dev/peps/[PEPs].
 = Creating a proposal
 
 
-# Prepare an AsciiDoc file outlining your proposal, using requirement verbiage following
+. Prepare an AsciiDoc file outlining your proposal, using requirement verbiage following
   link:http://www.faqs.org/rfcs/rfc2119.html[RFC 2119]
-# Place that document in a folder, numbered sequentially from the previous IEP.
-# Open a pull request.
+. Place that document in a folder, numbered sequentially from the previous IEP.
+. Open a pull request.
