@@ -1,0 +1,29 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+
+= Infrastructure Enhancement Proposals
+
+
+This repository is for tracking enhancement proposals to the
+link:https://jenkins.io[Jenkins project's]
+infrastructure. The goal of this repository is to collect and codify proposals
+in a transparent and historically reviewable fashion. It can be thought of
+similar to efforts such as the
+link:http://www.ietf.org/rfc.html[IETF's RFC process]
+or the Python project's
+link:https://www.python.org/dev/peps/[PEPs].
+
+
+= Creating a proposal
+
+
+# Prepare an AsciiDoc file outlining your proposal, using requirement verbiage following
+  link:http://www.faqs.org/rfcs/rfc2119.html[RFC 2119]
+# Place that document in a folder, numbered sequentially from the previous IEP.
+# Open a pull request.
