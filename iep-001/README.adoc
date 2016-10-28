@@ -1,0 +1,251 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-1: Infra Enhancement Proposal Format
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 1
+
+| Title
+| Infra Enhancement Proposal Format
+
+| Author
+| link:https://github.com/rtyler[R Tyler Croy]
+
+| Status
+| :speech_balloon: In-process
+
+| Created
+| 2016-10-25
+|===
+
+
+
+== What is an IEP?
+
+IEP ("eep!") stands for Infrastructure Enhancement Proposa. An IEP is a design
+document providing information to the Jenkins community, or describing an
+addition/change to the Jenkins project's infrastructure. The IEP should provide a
+concise technical specification of the addition/change and a rationale for the
+addition/change.
+
+We intend IEPs to be the primary mechanism for major infrastucture proposals,
+collecting feedback on the proposals, and for documenting the design decisions
+that have gone into the infrastructure over time. The IEP author is responsible
+for building consensus among the infrastructure team members, informing the
+users of the infrastructure and documenting dissenting opinions.
+
+Because the IEPs are maintained as text files in a versioned repository, their
+revision history is the historical record of the feature proposal
+footnoteref:[ieprepo, The source repository for IEPs can be found on link:https://github.com/jenkins-infra/iep[GitHub]]
+
+
+== IEP Types
+
+
+. Architectural change
+. Services change
+. Process change
+
+
+
+1. A **Standards Track** PEP describes a new feature or implementation
+   for Python. It may also describe an interoperability standard that will
+   be supported outside the standard library for current Python versions
+   before a subsequent PEP adds standard library support in a future
+   version.
+
+2. An **Informational** PEP describes a Python design issue, or
+   provides general guidelines or information to the Python community,
+   but does not propose a new feature.  Informational PEPs do not
+   necessarily represent a Python community consensus or
+   recommendation, so users and implementers are free to ignore
+   Informational PEPs or follow their advice.
+
+3. A **Process** PEP describes a process surrounding Python, or
+   proposes a change to (or an event in) a process.  Process PEPs are
+   like S
+     0K .tandards Track PEPs but apply to areas other than the Python
+   language itself.  They may propose an implementation, but not to
+   Python's codebase; they often require community consensus; unlike
+   Informational PEPs, they are more than recommendations, and users
+   are typically not free to ignore them.  Examples include
+   procedures, guidelines, changes to the decision-making process, and
+   changes to the tools or environment used in Python development.
+   Any meta-PEP is also considered a Process PEP.
+
+
+== IEP Workflow
+
+
+=== Start with an idea for infrastructure
+
+The IEPprocess begins with a new idea for Jenkins project infrastructure.  It
+is highly recommended that a single IEP contain a single key proposal or new
+idea. Small changes often don't need a full-fledged IEP document and can simply
+be contributied as Puppet or other code to the infrastructure workflow.
+
+Each IEP must have a champion -- someone who writes the IEP using the style and
+format described below, shepherds the discussions in the appropriate forums,
+and attempts to build community consensus around the idea.  The IEP champion
+(a.k.a. Author) should first attempt to ascertain whether the idea is
+IEP-worthy by discussing it first on the
+link:mailto:infra@lists.jenkins-ci.org[infra mailing list].
+
+Once the champion has asked the infra community as to whether an idea has any
+chance of acceptance, a draft IEP should be authored and linked to the mailing
+list. This gives the author the chance to flesh out the draft and its ideas
+before taking the time to formally submit the proposal.
+
+
+
+=== Submitting an IEP
+
+Following a discussion on the infra mailing list, the proposal should be
+submitted as a draft IEP via a GitHub pull request to the IEP repository
+footnoteref:[ieprepo]
+
+The standard IEP workflow is:
+
+* You, the IEP author, fork the IEP repository footnoteref:[ieprepo], and
+  create a directory named `iep-xxx` that contains a `README.adoc` which is the
+  IEP document. Replace `xxx` with an incremental IEP number (e.g. `002`)
+* Push this to your GitHub fork and submit a pull request.
+* The IEP editors review your PR for structure, formatting, and other errors.
+  Once the IEP editors have reviewed the basic formatting, they will attach the
+  "draft" label to the pull request.
+
+IEP authors are responsible for collecting community feedback on a IEP
+before submitting it for review. However, wherever possible, long
+open-ended discussions on public mailing lists should be avoided.
+
+Strategies to keep the discussions efficient include: setting up a
+separate mailing list for the topic, having the IEP author accept
+private comments in the early design phases, setting up a wiki page, etc.
+IEP authors should use their discretion here.
+
+The IEP author is responsible for updating the pull request with appropriate
+changes based on these discussions.
+
+
+=== IEP Maintenance
+
+In general, IEPs won't change over time but rather be superceded by follow-up
+or new prooposals. Once a proposal has been accepted and implemented, the IEP
+should stand the test of time as a reference document for future infrastructure
+contributors.
+
+Process IEPs may be updated over time to reflect changes to development ..
+practices and other details. The precise process followed in these cases will
+depend on the nature and purpose of the IEP being updated.
+
+
+
+=== Creating a successful IEP
+
+Each IEP should have the following parts:
+
+. **Preamble** -- an AsciiDoc table containing meta-data about the IEP including
+  the number, a short descriptive title (limited to a maximum of 50 characters),
+  the names, and optionally the contact info for each author, etc.
+. **Abstract** -- a short (200 word) description of the technical issue being
+  addressed.
+. **Specification** -- The technical specification should describe the
+  requierments, architecture and design of the proposal.
+. **Motivation** -- The motivation is critical for IEPs that want to add new
+  services to the Jenkins project's infrastructure. It should clearly explain
+  what benefit to the project the service brings, identifying the problems it
+  solves or the features it offers to the users or developers of the Jenkins
+  project. IEP submissions without sufficient motivation may be rejected
+  outright.
+. **Rationale** -- The rationale fleshes out the specification by
+   describing what motivated the design and why particular design
+   decisions were made.  It should describe alternate designs that
+   were considered and related work, e.g. how the feature is supported
+   in other languages.
+   The rationale should provide evidence of consensus within the
+   community and discuss important objections or concerns raised
+   during discussion.
+
+. **Reference Implementation** -- The reference implementation must be
+   completed for new services or process changes. This could be as succinct as
+   the code repository containing a new application, or an example project
+   demonstrating a new process change.
+   While there is merit to the approach of reaching consensus on the
+   specification and rationale before writing code, the principle of "rough
+   consensus and running code" is still useful when it comes to resolving
+   discussions about a service's architecutre or implementation details.
+
+
+=== IEP Formats and Templates
+
+IEPs are UTF-8 encoded text files using the
+link:http://asciidoctor.org[AsciiDoc]
+format.
+AsciiDoc allows for rich markup that is still quite easy to
+read, but also results in good-looking and functional HTML.
+
+
+==== IEP Header Preamble
+
+Each IEP must begin with an AsciiDoc table containing meta-data relevant to the
+IEP.
+
+[source,asciidoc]
+----
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 1
+
+| Title
+| Infra Enhancement Proposal Format
+
+| Author
+| link:https://github.com/rtyler[R Tyler Croy]
+
+| Status
+| :speech_balloon: In-process
+
+| Created
+| 2016-10-25
+|===
+----
+
+
+. **IEP** -- Proposal number, use a monotonically increasing number, starting
+  from the latest merged IEP document
+. **Title** -- Brief title explaining the proposal in fewer than 50 characters
+. **Author** -- Author/champion of the IEP, in essence, the individual
+  responsible for seeing the IEP through the process.
+. **Status** -- In-process, Accepted, or Rejected. IEPs should be authored with
+  an In-process status.
+. **Created** -- Date (`%Y%m%d`) when the document was first created.
+
+
+===== Additional Files
+
+IEPs may include additional files such as diagrams and code snippet.s Such
+files should be added into the `iep-xxx/` directory with self-explanitory file
+names.
+
+
+=== IEP Rejection
+
+If an IEP is rejected, the pull request for the IEP should still be merged with
+additional information added to the header of the document explaining the
+decision making process and why the proposal was rejected.
+
+This should help in the future when decisions must be revisited or reviewed as
+tools, technologies and needs of the project change.
