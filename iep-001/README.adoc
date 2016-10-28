@@ -25,6 +25,9 @@ endif::[]
 | Status
 | :speech_balloon: In-process
 
+| Type
+| Process
+
 | Created
 | 2016-10-25
 |===
@@ -53,36 +56,18 @@ footnoteref:[ieprepo, The source repository for IEPs can be found on link:https:
 == IEP Types
 
 
-. Architectural change
-. Services change
-. Process change
+. **Architectural change** -- an architecture change describes a new way of
+delivering a service or services for the Jenkins project infrastructure.
+
+. **Services change** -- this IEP would describe a new service being added to
+the infrastructure or changing how an existing service is deployed
+
+. **Process change** -- describes a change to how some process for the Jenkins
+project, or an introduction of new process to improve the efficiency,
+transparency or some other quality to how the project infrastructure is
+operated.
 
 
-
-1. A **Standards Track** PEP describes a new feature or implementation
-   for Python. It may also describe an interoperability standard that will
-   be supported outside the standard library for current Python versions
-   before a subsequent PEP adds standard library support in a future
-   version.
-
-2. An **Informational** PEP describes a Python design issue, or
-   provides general guidelines or information to the Python community,
-   but does not propose a new feature.  Informational PEPs do not
-   necessarily represent a Python community consensus or
-   recommendation, so users and implementers are free to ignore
-   Informational PEPs or follow their advice.
-
-3. A **Process** PEP describes a process surrounding Python, or
-   proposes a change to (or an event in) a process.  Process PEPs are
-   like S
-     0K .tandards Track PEPs but apply to areas other than the Python
-   language itself.  They may propose an implementation, but not to
-   Python's codebase; they often require community consensus; unlike
-   Informational PEPs, they are more than recommendations, and users
-   are typically not free to ignore them.  Examples include
-   procedures, guidelines, changes to the decision-making process, and
-   changes to the tools or environment used in Python development.
-   Any meta-PEP is also considered a Process PEP.
 
 
 == IEP Workflow
@@ -218,6 +203,9 @@ IEP.
 | Status
 | :speech_balloon: In-process
 
+| Type
+| Process
+
 | Created
 | 2016-10-25
 |===
@@ -231,6 +219,7 @@ IEP.
   responsible for seeing the IEP through the process.
 . **Status** -- In-process, Accepted, or Rejected. IEPs should be authored with
   an In-process status.
+. **Type** -- Describes the type of IEP: Architectural, Service, Process
 . **Created** -- Date (`%Y%m%d`) when the document was first created.
 
 
