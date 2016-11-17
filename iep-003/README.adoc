@@ -1,0 +1,48 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-3: Terraform for describing infrastructure as code
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 3
+
+| Title
+| Terraform for describing infrastructure as code
+
+| Author
+| link:https://github.com/rtyler[R. Tyler Croy]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| Process
+
+| Created
+| 2016-11-16
+|===
+
+
+
+== Abstract
+
+== Specification
+
+== Motivation
+
+== Rationale
+
+== Costs
+
+== Reference implementation
+
