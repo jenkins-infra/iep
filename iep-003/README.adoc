@@ -36,13 +36,281 @@ endif::[]
 
 == Abstract
 
+The migration to Azure means all infrastructure is (technically) an API call
+away. This means that more of our infrastructure can be managed via automation
+rather than previously where, in some cases, it was managed via support
+tickets. In order to develop, modify, and deploy Azure-based infrastructure the
+Jenkins project infrastructure should be define all infrastructure services and
+resources programmatically.
+
 == Specification
+
+
+link:http://terraform.io[Terraform]
+is a tool which provides Azure-specific abstractions
+footnote:[https://www.terraform.io/docs/providers/azurerm/index.html]
+for defining Azure resources programmatically, in addition to support for
+persistent the state of which resources have/have not yet been created.
+
+This document is not intended to explain all the features of Terraform, but
+rather describe how it should be used within the Jenkins project
+infrastructure.
+
+
+=== Defining Infrastructure
+
+As a proof-of-concept, an existing Azure Storage account was modeled
+footnote:[https://github.com/jenkins-infra/azure/blob/7f3032ab2d2ef411d74d3a81097fbcd575850a34/plans/releases-storage.tf]
+ with Terraform, e.g.:
+
+.releases-storage.tf
+[source]
+----
+resource "azurerm_resource_group" "releases" {
+    name     = "${var.prefix}jenkinsinfra-releases"
+    location = "East US 2"
+}
+resource "azurerm_storage_account" "releases" {
+    name                = "${var.prefix}jenkinsreleases"
+    resource_group_name = "${azurerm_resource_group.releases.name}"
+    location            = "East US 2"
+    account_type        = "Standard_GRS"
+}
+resource "azurerm_storage_container" "war" {
+    name                  = "war"
+    resource_group_name   = "${azurerm_resource_group.releases.name}"
+    storage_account_name  = "${azurerm_storage_account.releases.name}"
+    container_access_type = "container"
+}
+----
+
+Logical clusters or groups of resources should be defined in this manner, using
+a single `.tf` file in the `plans/` directory in the repository
+footnoteref:[azurerepo, https://github.com/jenkins-infra/azure].
+This makes finding the right Terraform plan corresponding to a specific part of
+the infrastructure easy to find, easier to review, and easy to test in
+isolation from the other resources.
+
+
+*All identifiers must be prefixed*.
+
+Azure contains a number of *global* identifier namespaces which can cause
+conflicts between two different contributors, or two different environments,
+when defining infrastructure. For example, if DevA defines a resource group
+named "jenkins", DevB cannot also define a resource group named "jenkins".
+_Some_ identifiers are subscription specific, but in order to avoid potential
+conflicts, all identifiers in Terraform resources *must* use the `prefix`
+variable:
+
+.example.tf
+[source]
+----
+resource "azurerm_resource_group" "example" {
+    name     = "${var.prefix}jenkinsinfra-examples" # <1>
+    location = "East US 2"
+}
+----
+<1> Referencing `var.prefix` pulls in an environment/developer-specific defined prefix
+
+
+=== Storing State
+
+Terraform generates state which allows the tool to act in an idempotent
+fashion. That is to say, without a `.tfstate` file of some form, Terraform may
+create redundant infrastructure in Azure.
+
+This state *is* an important part of what makes Terraform a useful tool for the
+Jenkins project (see <<Rationale>>). This state contains access keys, and other
+semi-confidential information which would not be safe to check into the
+repository
+footnoteref:[azurerepo].
+
+
+To reap the benefits of Terraform state without needing a local filesystem or
+`.tfstate` file checked into the repository
+footnoteref:[azurerepo]
+the proposal is to store _production_ Terraform state in Azure blob storage
+footnoteref:[blobstore, https://azure.microsoft.com/en-us/services/storage/blobs/]
+using Terraform's built-in
+link:https://www.terraform.io/docs/state/remote/index.html[Remote State]
+functionality.
+
+For production state, this would be configured as such:
+
+.prodstate.tf
+[source]
+----
+data "terraform_remote_state" "prod_tfstate" {
+  backend = "azure"
+  config {
+    storage_account_name = "jenkinsinfra-tfstate"
+    container_name       = "production"
+    key                  = "terraform.tfstate"
+  }
+}
+----
+
+
+==== Requirements
+
+Storing Terraform state in Azure blob storage dictates two requirements to the
+infrastructure code:
+
+. A separate "bootstrap" set of Terraform plans exists to define the storage
+  containers necessary to store/access production state.
+. `terraform apply` statements be run in a consistent fashion, in order to
+  ensure that the appropriate production state is being referenced during the
+  execution of the Terraform plans.
+
+
+The first requirement is readily addressed with a separate directory structure
+and some tooling in the repository
+footnoteref:[azurerepo].
+
+The second requirement addressed with the use of a "proper" Jenkins-based
+delivery pipeline for the Terraform plans. This would entail a Jenkins
+environment which had the appropriate credentials for provisioning
+infrastructure in the production Azure environment, e.g.:
+
+[source, groovy]
+----
+node('azurerm') {
+    checkout scm
+
+    stage('Validate') {
+        sh 'terraform validate plans/*.tf'
+    }
+    stage('Plan') {
+        sh 'terraform plan plans'
+    }
+    stage('Apply') {
+        input 'Do the plans look good?'
+        sh 'terraform apply plans'
+    }
+}
+----
+
+
+This approach provides a single point of deployment for Terraform plans which
+can be then inspected or otherwise interacted with by the entirety of the
+Jenkins project infrastructure team instead of relying on individual
+contributors' laptops.
+
 
 == Motivation
 
+By using Terraform to describe *all* infrastructure  there will be no "hidden"
+infrastructure which is only known to a select few, rather than the current
+situation where one or two people might be aware of _where_ certain resources are
+located or how they relate to others.
+
+
+Defining all infrastructure resources in Terraform also lowers the bar for new
+infrastructure contributions. Not only by making the actual infrastructure
+topologies open source, but by allowing practically anybody to provision
+infrastructure which resembles Jenkins project infrastructure. Currently there
+is no way to provision a "dev version of the Jenkins project infrastructure"
+and this would be feasible with Terraform plans describing the project's
+infrastructure.
+
+
 == Rationale
+
+The benefits of describing infrastructure as code should be self-evident,
+before considering the rationale for choosing Terraform, first consider some
+other options:
+
+
+=== Azure Resource Manager (ARM) templates
+
+ARM templates
+footnoteref:[arm, https://azure.microsoft.com/en-us/documentation/articles/resource-group-authoring-templates/]
+are conceptually interchangeable with AWS Cloud Formation templates; templates
+defined in JSON to describe cloud resources.
+
+*Pros*
+
+* Supported for practically all resources on Azure
+* Relatively simple to use for the basic use-cases
+
+
+*Cons*
+
+* No state and therefore
+* Not idempotent
+* Entirely foreign to many within the operations community.
+* Would require an external source of template parameters in order to function.
+  In essence, ARM allows template parameters but use of parameterized templates
+  would mean Jenkins project infrastructure automation would require these to
+  be defined externally to the ARM template to model multiple
+  (local-dev vs. production) environments
+
+=== Puppet-defined resources
+
+See also:
+link:https://github.com/puppetlabs/puppetlabs-azure[puppetlabs-azure module]
+
+*Pros*
+
+* Jenkins infrastructure already has large amounts of Puppet code
+  implemented, and a well-defined workflow for modifying, testing, and
+  deploying Puppet code.
+* Puppet's graph approach supports idempotency
+
+*Cons*
+
+* Puppet must have an "execution context" which for most Puppet catalogues
+  means a `node` (machine) which the catalogue is being executed against. In
+  order to provision Azure resources a "deployment" node would need to exist
+  whose sole job would be to provision Azure resources from Puppet. Basically,
+  one cannot run Puppet on "Azure" to provision an Azure Load Balancer (for
+  example).
+* The puppetlabs-azure module is not a very common approach which means the
+  tooling will lag behind "native" (i.e. supported by Microsoft) toolchains
+  such as ARM templates
+  footnoteref:[arm].
+
+=== Terraform
+
+:+1:
+
+Terraform is a reasonably popular and well understood tool, which enjoys
+contributions from Microsoft for its Azure support.
+
+*Pros*
+
+* Stateful and therefore
+* Supports idempotent operations
+* Widely used in the "modern operations" community, while the specific
+  resources might not be familiar to newcomers, the tool itself would be.
+* Variable substitution and separation of state files allows development
+  clusters to be created entirely separate from production while still
+  resembling production infrastructure.
+
+
+*Cons*
+
+* "Yet another DSL" to learn in order to effectively contribute to the Jenkins
+  project infrastructure
+* Doesn't support all resources defined by Azure, which might dictate the use
+  of the
+  link:https://www.terraform.io/docs/providers/azurerm/r/template_deployment.html[azurerm_template_deployment]
+  resource in Terraform, and still needing to write ARM templates
+  footnoteref:[arm].
+
+
+
+
 
 == Costs
 
+There are no additional financial costs associated with using Terraform. There
+is a learning curve associated with Terraform but it's safe to assume that
+there's a learning curve with all things Azure for the infrastructure
+contributors at this point in time.
+
 == Reference implementation
 
+This
+link:https://github.com/jenkins-infra/azure/blob/7f3032ab2d2ef411d74d3a81097fbcd575850a34/plans/releases-storage.tf[plan]
+is a reference implementation of the only Azure resources provisioned to date.
