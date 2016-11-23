@@ -1,0 +1,48 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-X: The title goes here
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| X
+
+| Title
+| The title goes here
+
+| Author
+| The author goes here
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| [Process|Service|Architecture]
+
+| Created
+| 2016-10-25
+|===
+
+
+
+== Abstract
+
+== Specification
+
+== Motivation
+
+== Rationale
+
+== Costs
+
+== Reference implementation
+

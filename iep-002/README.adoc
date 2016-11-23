@@ -1,0 +1,212 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-2: Azure Virtual Networks for Cluster Segregation
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 2
+
+| Title
+| Azure Virtual Networks for Cluster Segregation
+
+| Author
+| link:https://github.com/rtyler[R. Tyler Croy]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| Architecture
+
+| Created
+| 2016-11-16
+|===
+
+
+== Abstract
+
+Currently the only network connecting various infrastructure services is the
+public internet. Regardless of the security level of a service, if other
+services must connect to it they must do so over the public internet. This is
+not an explicit design decision, but rather a consequence of the organic,
+cross-datacenter manner in which infrastructure grew.
+
+
+== Specification
+
+As part of the
+link:https://wiki.jenkins-ci.org/display/JENKINS/Azure+Migration+Project+Plan[Azure migration]
+the Jenkins project now has access to "modern" software-defined networking
+tools which can allow designing and implementing better network topologies than
+"just the public internet."
+
+This can be accomplished with the Azure
+link:https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview[Virtual Networks]
+feature, similar to the AWS VPC feature, which allows definition of software
+defined networks into which Azure resources can be deployed (e.g. VMs, SQL
+Server DBs, etc).
+
+This proposal is for the creation of *three* Virtual Networks for the Jenkins
+project infrastructure:
+
+
+. *Public Production*
+. *Private Production*
+. *Development*
+
+At some point in the future, there might be more networks necessary, but at
+this point this seems sufficient to bootstrap the project infrastructure on
+Azure in a reasonably sane fashion.
+
+=== Public Production
+
+The "Public Production" Virtual Network would contain end-user (developer or
+Jenkins user) facing services such as, but not limited to:
+
+* link:https://jenkins.io[jenkins.io] - Primary (static) website
+* link:https://ci.jenkins.io[ci.jenkins.io] - Jenkins-on-Jenkins cluster
+* link:https://accounts.jenkins.io[accounts.jenkins.io] - Account app
+* JIRA and Confluence
+
+Services in this network should be appropriately protected with
+Network Security Groups, only allowing the necessary application ports to be
+services, but should be otherwise considered "public."
+
+
+=== Private Production
+
+The "Private Production" network is for services which are internal, or highly
+sensitive, within the Jenkins project's infrastructure. These are services
+which include, but are not limited to:
+
+* Puppet Master - the holder of all secrets for provisioning Public and Private
+  Production-level services
+* "trusted.ci" - a behind-the-scenes Jenkins cluster with release/signing keys
+
+This network would also utilize Network Security Groups and will be peered with
+the Public Production network via
+link:https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-peering-overview[Virtual Network Peering]
+which allows the two networks to route between each other via the Azure network
+backbone using private IP addresses. This peering is required to manage
+services via Puppet in the Public Production network.
+
+
+==== Contributor Access
+
+The Private Production network will be locked down and unaccessible from the
+public internet. There are however some contributors, such as board members and
+team leads, which will need access to services within the Private Production
+network.
+
+These contributors will need to be granted access via a
+link:https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-about-vpngateways#point-to-site[VPN Gateway]
+in Azure. This creates some minor additional cost and management overhead
+per-user, but the security provided by the Private Production network enables
+projects such as fully automated core releases.
+
+
+=== Development
+
+The "Development" network is somewhat of a "catch-all" for services which are
+not yet ready for production usage, testing, and demonstration environments.
+Services which live in this environment *will not* have access to the Puppet
+Master and therefore will not be capable of being fully provisioned in the
+same manner as "production" services.
+
+
+NOTE: At some point in the future, a staging Puppet master may be provisioned in this
+network but that is outside the scope of this document.
+
+
+
+---
+
+[source]
+----
+                        +---------------------+
+                        |                     |
+      +---------------> |  Public Production  <-------+
+      |                 |                     |       |
+      |                 +---------------------+     VNet Peering
+      |                                               |
+      |                                 +-------------v--------+
+                        +-------------+ |                      |
+The Internet ---------> + VPN Gateway |-|  Private Production  |
+                        +-------------+ |                      |
+      |                                 +----------------------+
+      |
+      |                 +----------------+
+      |                 |                |
+      +---------------> |   Development  |
+                        |                |
+                        +----------------+
+----
+
+
+== Motivation
+
+
+Structuring the Azure-based infrastructure across the three proprosed Virtual
+Networks will create an additional level of service balkanization which we are
+currently (pre-Azure) are unable to provide. Per our possible infrastructure
+compromise earlier this year
+footnote:[https://jenkins.io/blog/2016/04/22/possible-infra-compromise/],
+the infrastructure should be *more* balkanized whenever possible to reduce
+the impact, or remove the possibility, of incursions into Jenkins project
+infrastructure.
+
+
+== Rationale
+
+
+The three Virtual Networks proposed represent a "minimum" structure to get
+infrastructure provisioned safely into Azure from a network perspective.
+
+A completely flat network topology was briefly considered, and does make
+management very easy, but leaves us with little network-based protection
+against unknown vulnerability in some of the non-end-user-facing services.
+Additionally, it is a requirement for at least "trusted.ci" to exist off the
+public internet as it contains signing keys and other highly sensitive secrets.
+
+Trusting Network Security Groups alone may inadvertently leave open holes in
+our infrastructure, whereas implementing a fundamental layer two
+footnote:[https://en.wikipedia.org/wiki/OSI_model#Layer_2:_Data_Link_Layer]
+separation ensures misconfigurations and/or accidents don't leave sensitive
+services in the Jenkins project infrastructure exposed.
+
+
+
+== Costs
+
+The cost of maintenance/implementation of these networks cannot be estimated at
+this point in time.
+
+The monetary cost only plays a factor when routing traffic between two
+networks, which would would be:
+
+[cols=2]
+|===
+| Inbound data transfer
+| $0.01 per GB
+
+| Outbound data transfer
+| $0.01 per GB
+|===
+
+link:https://azure.microsoft.com/en-us/pricing/details/virtual-network/[source]
+
+
+== Reference implementation
+
+As of right now there is no reference implementation of the various Virtual
+Networks.
