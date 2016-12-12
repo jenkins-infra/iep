@@ -25,5 +25,9 @@ link:https://www.python.org/dev/peps/[PEPs].
 
 . Prepare an AsciiDoc file outlining your proposal, using requirement verbiage following
   link:http://www.faqs.org/rfcs/rfc2119.html[RFC 2119]
-. Place that document in a folder, numbered sequentially from the previous IEP.
+  and the directions from
+  link:https://github.com/jenkins-infra/iep/tree/master/iep-001[IEP-001].
+. Copy `template.adoc` into the new `iep-xxx/` folder as `README.adoc`,
+  numbering the directory sequentially from the previous IEP.
+. Write proposal
 . Open a pull request.
