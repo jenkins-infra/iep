@@ -1,0 +1,57 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-4: Kubernetes for hosting project applications
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 4
+
+| Title
+| Kubernetes for hosting project applications
+
+| Author
+| link:https://github.com/rtyler[R. Tyler Croy]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| Architecture
+
+| Created
+| 2016-12-15
+|===
+
+
+== Abstract
+
+The Jenkins project hosts a number of applications, using different technology
+stacks, using
+link:https://en.wikipedia.org/wiki/Docker_%28software%29[Docker]
+containers as the packaging and runtime environment. While the merits of Docker
+containers for running these applications is not the subject of this IEP
+IEP document, the hosting and deployment of these containers is. In essence,
+some tooling for safely hosting, deploying, and monitoring containerized
+applications within the Jenkins infrastructure is necessary to support the
+numerous applications which support different needs within the project.
+
+== Specification
+
+== Motivation
+
+== Rationale
+
+== Costs
+
+== Reference implementation
+
