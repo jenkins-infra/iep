@@ -61,7 +61,7 @@ This specification only outlines the architecture for the "Public Production"
 footnoteref:[iep2,https://github.com/jenkins-infra/iep/tree/master/iep-002]
 Kubernetes cluster. It is expected that the project will run multiple
 Kubernetes clusters, following this architecture, depending on the access
-control requirements for each discrete Kuberenetes.
+control requirements for each discrete Kubernetes.
 
 At a high level Kubernetes is a master/agent architecture which would live in a
 *single region*. For the purposes of Jenkins infrastructure, the production
@@ -211,7 +211,7 @@ long-term, which makes choosing Docker Swarm on ACS seem risky.
 
 === DC/OS
 
-Similar to Docker Swarm on ACS< there is no mainstream support for DC/OS on
+Similar to Docker Swarm on ACS, there is no mainstream support for DC/OS on
 other cloud providers which suggests either immaturity in the project or lack
 of long-term committment by platform vendors to support it.
 
