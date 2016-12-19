@@ -9,6 +9,7 @@ endif::[]
 = IEP-4: Kubernetes for hosting project applications
 
 :toc:
+:hide-uri-scheme:
 
 .Metadata
 [cols="2"]
@@ -20,7 +21,7 @@ endif::[]
 | Kubernetes for hosting project applications
 
 | Author
-| link:https://github.com/rtyler[R. Tyler Croy]
+| link:https://github.com/rtyler[R. Tyler Croy] link:https://github.com/olblak[Olivier Vernin]
 
 | Status
 | :speech_balloon: In-process
@@ -36,22 +37,223 @@ endif::[]
 == Abstract
 
 The Jenkins project hosts a number of applications, using different technology
-stacks, using
+stacks, with
 link:https://en.wikipedia.org/wiki/Docker_%28software%29[Docker]
-containers as the packaging and runtime environment. While the merits of Docker
-containers for running these applications is not the subject of this IEP
+containers as the packaging and runtime environment. While the merits of using Docker
+containers to run these applications is not the subject of this IEP
 IEP document, the hosting and deployment of these containers is. In essence,
-some tooling for safely hosting, deploying, and monitoring containerized
-applications within the Jenkins infrastructure is necessary to support the
-numerous applications which support different needs within the project.
+some tooling for safely hosting, deploying, and monitoring containers within
+the Jenkins infrastructure is necessary in order to support the applications
+the project requires.
 
 == Specification
 
+To support aforementioned containerized applications,
+link:http://kubernetes.io[Kubernetes]
+(also referred to as "k8s") will be deployed using the
+link:https://azure.microsoft.com/en-us/services/container-service/[Azure Container Service]
+(ACS).  This specification will detail the *initial* Kubernetes cluster
+architecture but is not prescriptive on how the cluster should grow/shrink as
+requirements change for the applications hosted.
+
+This specification only outlines the architecture for the "Public Production"
+footnoteref:[iep2,https://github.com/jenkins-infra/iep/tree/master/iep-002]
+Kubernetes cluster. It is expected that the project will run multiple
+Kubernetes clusters, following this architecture, depending on the access
+control requirements for each discrete Kuberenetes.
+
+At a high level Kubernetes is a master/agent architecture which would live in a
+*single region*. For the purposes of Jenkins infrastructure, the production
+Kuberenetes clusters would be located in the "East US" Azure region.
+footnoteref:[regions,https://azure.microsoft.com/en-us/regions/]
+
+The virtual machines are all
+link:https://azure.microsoft.com/en-us/pricing/details/virtual-machines/series/#d-series[D-series]
+instances in order to provide an ideal balance of cost and performance. For
+more, see <<Costs>> below.
+
+
+*Kubernetes master*
+
+A cluster would run a single D3v2 instance as the master node
+
+
+*Kubernetes agents*
+
+A cluster would run agents using a
+link:https://azure.microsoft.com/en-us/services/virtual-machine-scale-sets/[Scale Set]
+of D2v2 instances, with a minimum of three agents running at all times.
+
+
+
+[NOTE]
+====
+Following
+link:https://github.com/jenkins-infra/iep/tree/master/iep-003[IEP-3]
+the <<Reference Implementation>> uses Terraform to describe the infrastructure
+necessary to support this specification.
+====
+
+
+=== Monitoring
+
+As the Jenkins project already uses
+link:http://datadoghq.com[Datadog]
+for monitoring our production infrastructure, the Kubernetes cluster must
+integrate appropriately.
+
+This will be accomplished using the
+link:http://docs.datadoghq.com/integrations/kubernetes/[Datadog/Kubernetes integration]
+maintained by Datadog themselves.
+
+The integration is will provide metrics for both:
+
+* Kubernetes cluster health/status
+* Container health/status running atop the cluster
+
+The metrics required are not specified here under the assumption that all
+metrics appropriate for ensuring stable service levels of project
+infrastructure will be collected.
+
+=== Logging
+
+[NOTE]
+====
+This section is still a work in progress, awaiting information to be provided
+by
+link:https://github.com/olblak[Olivier Vernin]
+====
+
+Centralized logging for applications hosted within Kubernetes will be provided
+a combination of containers in the cluster running
+link:https://en.wikipedia.org/wiki/Fluentd[Fluentd]
+and the Microsoft
+link:http://www.microsoft.com/en-us/cloud-platform/operations-management-suite[Operations Management Suite]
+(OMS).
+
+.Data flow for k8s logs
+[source]
+====
++-------------------------+
+|  Kubernetes             |
+| |          ^            |
+| | +-----+  | Logs to k8s|
+| | | App +--`
+| | +-----+               |          +-----------------------+
+| | +---------+   Publish to blobs   |                       |
+| `>| Fluentd +--------------------->|   Azure Blob Storage  |
+|   +---------+           |          |                       |
+|   +-----+               |          +-----------+-----------+
+|   | App |               |                      |
+|   +-----+               |                      | Pull from blobs as data source
++-------------------------+                      v
+                                  +-------------------------------+
+                                  |  Operations Management Suite  |
+                                  +-------------------------------+
+====
+
+
+
+=== Deployment/Orchestration
+
+[NOTE]
+====
+This section is still a work in progress, awaiting and prototyping by
+link:https://github.com/olblak[Olivier Vernin]
+====
+
 == Motivation
+
+The motivation for centralizing container hosting is fairly
+self-evident. Consistency of management, deployment, logging, monitoring, and
+runtime environment will be a major time-saver for volunteers participating in
+the Jenkins project.
+
+Additionally, consolidation on a well understood and supported tool
+(Kuberenetes) allows the infrastructure team to spend less time operating the
+underlying hosting platform.
+
 
 == Rationale
 
+As mentioned in the <<Abstract>>, the Jenkins project runs containerized
+applications, the merits of which are outside the scope of this document.
+Thusly this document outlines an approach for managing numerous containers in
+Azure.
+
+There is a fundamental assumption being made in using Azure Container Service,
+that is: it's cheaper/easier/faster to use a "turn-key" solution for building
+and running a container orchestrator (e.g. Kubernetes) than it would be to
+build out such a cluster ourselves using virtual machines and Puppet (for
+example).
+
+With this assumption, the options provided by ACS are: Kubernetes, Docker
+Swarm, or DC/OS.
+
+The selection for Kubernetes largely rests on two criteria:
+
+. Kubernetes is supported in some form by two of the three major cloud vendors
+  (Microsoft, Google). Which indicates project maturity and long-term support but
+  also flexibility for the Jenkins project to migrate to alternative cloud
+  vendors if the need were to arise.
+. Developer preference: we prefer Kubernetes and the tooling it provides over the alternatives.
+
+=== Docker Swarm
+
+Docker Swarm is the leading option, behind Kubernetes, But the open source
+"swarm mode" functionality is not supported by Azure Container Service, nor is
+Docker Swarm supported by any other vendor other than Microsoft at this point.
+
+The focus from Docker, Inc. seems to be more on products such as
+link:https://www.docker.com/products/docker-datacenter[Docker Datacenter]
+long-term, which makes choosing Docker Swarm on ACS seem risky.
+
+=== DC/OS
+
+Similar to Docker Swarm on ACS< there is no mainstream support for DC/OS on
+other cloud providers which suggests either immaturity in the project or lack
+of long-term committment by platform vendors to support it.
+
+Additionally, at this point in time, the authors of this document do not know
+anybody committed to running production workloads on DC/OS (we're certain they
+exist however).
+
 == Costs
+
+[quote]
+____
+ACS is a free service that clusters Virtual Machines (VMs) into a container
+service. You only pay for the VMs and associated storage and networking
+resources consumed.
+____
+
+
+Assuming a single minimally scaled cluster with a single master and three
+agents, the annual cost of the Kubernetes cluster itself would be: *$3,845.64*.
+Obviously as the number of agents increases, the cost will increase per-agent
+instance.
+
+
+.Costs
+|===
+| Instance
+| Annual Cost (East US)
+
+| D3v2
+| $2566.68
+
+| D2v2
+| $1278.96
+|===
+
 
 == Reference implementation
 
+
+The current reference implementation is authored by
+link:https://github.com/olblak[Olivier Vernin]
+in
+link:https://github.com/jenkins-infra/azure/pull/5[pull request #5]
+to the
+link:https://github.com/jenkins-infra/azure[azure]
+repository.
