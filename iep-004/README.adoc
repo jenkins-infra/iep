@@ -41,11 +41,11 @@ The Jenkins project hosts a number of applications, using different technology
 stacks, with
 link:https://en.wikipedia.org/wiki/Docker_%28software%29[Docker]
 containers as the packaging and runtime environment. While the merits of using Docker
-containers to run these applications is not the subject of this IEP
-IEP document, the hosting and deployment of these containers is. In essence,
-some tooling for safely hosting, deploying, and monitoring containers within
-the Jenkins infrastructure is necessary in order to support the applications
-the project requires.
+containers to run these applications is not the subject of this IEP document,
+the hosting and deployment of these containers is. In essence, some tooling for
+safely hosting, deploying, and monitoring containers within the Jenkins
+infrastructure is necessary in order to support the applications the project
+requires.
 
 == Specification
 
