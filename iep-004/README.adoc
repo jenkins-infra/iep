@@ -10,6 +10,7 @@ endif::[]
 
 :toc:
 :hide-uri-scheme:
+:sect-anchors:
 
 .Metadata
 [cols="2"]
@@ -90,7 +91,7 @@ of D2v2 instances, with a minimum of three agents running at all times.
 ====
 Following
 link:https://github.com/jenkins-infra/iep/tree/master/iep-003[IEP-3]
-the <<Reference Implementation>> uses Terraform to describe the infrastructure
+the <<reference-implementation>> uses Terraform to describe the infrastructure
 necessary to support this specification.
 ====
 
@@ -220,7 +221,7 @@ exist however).
 
 == Costs
 
-[quote]
+[quote, https://azure.microsoft.com/en-us/pricing/details/container-service/]
 ____
 ACS is a free service that clusters Virtual Machines (VMs) into a container
 service. You only pay for the VMs and associated storage and networking
@@ -236,18 +237,18 @@ instance.
 
 .Costs
 |===
-| Instance
-| Annual Cost (East US)
-
-| D3v2
-| $2566.68
+| Instance | Annual Cost (East US)
 
 | D2v2
 | $1278.96
+
+| D3v2
+| $2566.68
 |===
 
 
-== Reference implementation
+[[reference-implementation]]
+== Reference Implementation
 
 
 The current reference implementation is authored by
