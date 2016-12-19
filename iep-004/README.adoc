@@ -21,7 +21,7 @@ endif::[]
 | Kubernetes for hosting project applications
 
 | Author
-| link:https://github.com/rtyler[R. Tyler Croy] link:https://github.com/olblak[Olivier Vernin]
+| link:https://github.com/rtyler[R. Tyler Croy], link:https://github.com/olblak[Olivier Vernin]
 
 | Status
 | :speech_balloon: In-process
@@ -133,7 +133,7 @@ link:http://www.microsoft.com/en-us/cloud-platform/operations-management-suite[O
 
 .Data flow for k8s logs
 [source]
-====
+----
 +-------------------------+
 |  Kubernetes             |
 | |          ^            |
@@ -150,7 +150,7 @@ link:http://www.microsoft.com/en-us/cloud-platform/operations-management-suite[O
                                   +-------------------------------+
                                   |  Operations Management Suite  |
                                   +-------------------------------+
-====
+----
 
 
 
