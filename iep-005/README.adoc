@@ -1,0 +1,72 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-5: Development activity Events collection
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+
+| IEP
+| 5
+
+| Title
+| Development activity Events collection
+
+| Author
+| link:https://github.com/rtyler[R. Tyler Croy]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| Service
+
+| Created
+| 2016-12-28
+|===
+
+
+
+== Abstract
+
+== Specification
+
+
+[source]
+----
+
++--------------------+                  +----------------------------+            +-----------+
+| GitHub (jenkinsci) +----webhook--+    |  github-event-queue (App)  |      +----->  EventHub |
++--------------------+             |    +----------------------------+      |  |  +-----------+
++------------------------+         |    |                            +------+  |
+| GitHub (jenkins-infra) +-------+ +---->     function-jenkinsci     +- +      |
++------------------------+       |      |                            |  |      |
+                              webhook   +----------------------------+  |   enqueue
+                                 |      |                            |  |      |
+                                 +------>   function-jenkins-infra   +---------+
+                                        |                            +-------+
+                                        +----------------------------+  |    |
+                                                                        |    |
+                                          +-----------append------------+  append
+                                          |                                  |
+                           +--------------v-----------+ +--------------------v---------+
+                           |  DocumentDB (jenkinsci)  | |  DocumentDB (jenkins-infra)  |
+                           +--------------------------+ +------------------------------+
+----
+
+== Motivation
+
+== Rationale
+
+== Costs
+
+== Reference implementation
+
