@@ -40,9 +40,13 @@ endif::[]
 Considering the size and velocity of the Jenkins project, it can be difficult
 to systematically determine the overall health through manual checks, scraping
 of various APIs, or through other non-automated means. Additionally, without
-any project-owned corpus of data around it is burdensome to ask "one-off
-questions" about project activity ("I wonder how quickly pull requests are
-merged for new contributors?").
+any project-owned corpus of data around it is burdensome to answer questions
+such as:
+
+* What's the level of development activities in core, class A/B/C plugins? How are they changing over the time?
+* Who are the seasoned contributors?
+* Who are the new contributors that we can reach out to and help?
+* What's the typical journey of a plugin developer?
 
 == Specification
 
@@ -124,7 +128,7 @@ This table should be updated when new sources and types are added:
 
 === Storage Capacity
 
-The <<Cost>> for Azure DocumentDB storage is only based on what is _actually_
+The <<Costs>> for Azure DocumentDB storage is only based on what is _actually_
 consumed rather than what is provisioned. Therefore each DocumentDB provisioned
 for events should be at minimum *25GB*.
 
@@ -138,18 +142,30 @@ DocumentDB resources, the default of *session* consistency should be used.
 
 === Monitoring
 
-XXX
+The monitoring facilities
+link:https://docs.microsoft.com/en-us/azure/azure-functions/functions-monitoring[built into Azure Functions]
+don't integrate with any of the existing monitoring tools in use by the Jenkins
+project. Azure Functions can however, output diagnostic logs and web server
+logs into an Azure storage account. This is not scoped in this document because
+it is not yet clear whether these logs are necessary and worth the added cost
+of storing them.
+
+zure DocumentDB does not have a supported integration with DataDog.
+
+
+Until there is more support in DataDog or Azure for better monitoring, these
+services will *not* be automatically monitored.
+
 
 
 == Motivation
 
 By provisioning relatively simple webhook receivers which not only archive
-events data into a live-queryable datastore (DocumentDB), but publish those
+events data into a live-queryable datastore (DocumentDB), but also publish those
 events on an Azure EventHub, the Jenkins project will have an easy-to-access
 data store of project events. Additionally, the events enqueued into EventHub
 can act as an input for future services (for example, a project health
 dashboard) without requiring additional infrastructure to be provisioned.
-
 
 == Rationale
 
