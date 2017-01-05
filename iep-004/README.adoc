@@ -118,12 +118,6 @@ infrastructure will be collected.
 
 === Logging
 
-[NOTE]
-====
-This section is still a work in progress, awaiting information to be provided
-by
-link:https://github.com/olblak[Olivier Vernin]
-====
 
 Centralized logging for applications hosted within Kubernetes will be provided
 a combination of containers in the cluster running
@@ -132,27 +126,38 @@ and the Microsoft
 link:http://www.microsoft.com/en-us/cloud-platform/operations-management-suite[Operations Management Suite]
 (OMS).
 
+By *default* logs will go directly from Fluend to OMS where they will be
+available for *7 days*.
+
+Applications which need or desire to have logs persisted for longer periods of
+time must have all log-lines prefixed with `azure-archive`.
+
+
 .Data flow for k8s logs
 [source]
 ----
 +-------------------------+
-|  Kubernetes             |
-| |          ^            |
-| | +-----+  | Logs to k8s|
-| | | App +--`
-| | +-----+               |          +-----------------------+
-| | +---------+   Publish to blobs   |                       |
-| `>| Fluentd +--------------------->|   Azure Blob Storage  |
-|   +---------+           |          |                       |
-|   +-----+               |          +-----------+-----------+
-|   | App |               |                      |
-|   +-----+               |                      | Pull from blobs as data source
-+-------------------------+                      v
-                                  +-------------------------------+
-                                  |  Operations Management Suite  |
-                                  +-------------------------------+
+|  Kubernetes              |
+| |          ^             |
+| | +-----+  | Logs to k8s |
+| | | App +--`             |
+| | +-----+                |                  +-----------------------------+
+| | +---------+ 'azure-archive' prefixed logs |                             |
+| `>| Fluentd +------------------------------>|   Azure Blob Storage        |
+|   +---------+------------------+            |  (`logs` specific storage ) |
+|   +-----+                |     |            +------------+----------------+
+|   | App |                |     |                         |
+|   +-----+                | all other logs                | Pull from blobs as data source
++-------------------------+      |                         v
+                                 |         +-------------------------------+
+                                 +-------->|  Operations Management Suite  |
+                                           +-------------------------------+
 ----
 
+
+A prototype of this architecture can be found in Olivier Vernin's
+link:https://github.com/olblak/fluentd-k8s-azure[fluentd-k8s-azure]
+repository.
 
 
 === Deployment/Orchestration
