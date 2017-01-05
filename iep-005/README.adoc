@@ -6,7 +6,7 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
-= IEP-5: Development activity Events collection
+= IEP-5: Systematic collectino of project events
 
 :toc:
 
@@ -18,7 +18,7 @@ endif::[]
 | 5
 
 | Title
-| Development activity Events collection
+| Systematic collection of project events
 
 | Author
 | link:https://github.com/rtyler[R. Tyler Croy]
@@ -37,21 +37,33 @@ endif::[]
 
 == Abstract
 
+Considering the size and velocity of the Jenkins project, it can be difficult
+to systematically determine the overall health through manual checks, scraping
+of various APIs, or through other non-automated means. Additionally, without
+any project-owned corpus of data around it is burdensome to ask "one-off
+questions" about project activity ("I wonder how quickly pull requests are
+merged for new contributors?").
+
 == Specification
+
+
+
+
+
 
 
 [source]
 ----
 
-+--------------------+                  +----------------------------+            +-----------+
-| GitHub (jenkinsci) +----webhook--+    |  github-event-queue (App)  |      +----->  EventHub |
-+--------------------+             |    +----------------------------+      |  |  +-----------+
-+------------------------+         |    |                            +------+  |
-| GitHub (jenkins-infra) +-------+ +---->     function-jenkinsci     +- +      |
++--------------------+                  +----------------------------+            +--------------+
+| GitHub (jenkinsci) +----webhook--+    |  github-event-queue (App)  |      +----->   EventHub   |
++--------------------+             |    +----------------------------+      |  +--> (all events) |
++------------------------+         |    |                            +------+  |  +--------------+
+| GitHub (jenkins-infra) +-------+ +---->                            +--+      |
 +------------------------+       |      |                            |  |      |
-                              webhook   +----------------------------+  |   enqueue
-                                 |      |                            |  |      |
-                                 +------>   function-jenkins-infra   +---------+
+                              webhook   | determine which datastore  |  |   enqueue
+                                 |      |  the event should go into  |  |      |
+                                 +------>                            +---------+
                                         |                            +-------+
                                         +----------------------------+  |    |
                                                                         |    |
