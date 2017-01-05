@@ -6,7 +6,7 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
-= IEP-5: Systematic collectino of project events
+= IEP-5: Systematic collection of project events
 
 :toc:
 
@@ -76,9 +76,62 @@ merged for new contributors?").
 
 == Motivation
 
+By provisioning relatively simple webhook receivers which not only archive
+events data into a live-queryable datastore (DocumentDB), but publish those
+events on an Azure EventHub, the Jenkins project will have an easy-to-access
+data store of project events. Additionally, the events enqueued into EventHub
+can act as an input for future services (for example, a project health
+dashboard) without requiring additional infrastructure to be provisioned.
+
+
 == Rationale
 
 == Costs
 
+The pricing
+link:https://azure.microsoft.com/en-us/pricing/details/functions/[for Azure Functions]
+by itself is already confusing and without an existing Functions app
+consuming the `jenkinsci` events it's difficult to evaluate what the runtime
+cost would be. That said, 1 million monthly executions are provided for free by
+Azure, meaning the Function app itself will cost nothing or very little.
+
+
+The noticeable cost of this proposal will come from the
+link:https://azure.microsoft.com/en-us/pricing/details/event-hubs/[EventHub]
+and
+link:https://azure.microsoft.com/en-us/pricing/details/documentdb/[DocumentDB]
+storage and transit rates.
+
+
+=== DocumentDB
+
+The storage rate, in East US, is *$0.25 per GB / month*. The throughput rate, in East US, is *$0.008/hr* per hundred
+link:https://docs.microsoft.com/en-us/azure/documentdb/documentdb-manage#request-units-and-database-operations[Request Units per second].
+
+Assuming each DocumentDB instance (`jenkinsci` and `jenkins-infra`
+respectively) is provisioned with 5GB of storage, the annual storage cost will
+be roughly *$30*. Though this is likely to go up as more data is stored over
+time.
+
+The throughput rate's annual cost is difficult to ascertain without real-world
+usage, but is expected to remain under *$100* barring dramatic shifts in
+expected usage.
+
+=== EventHub
+
+The cost per million ingress events in East US is a paltry $0.028, so not worth
+discussing.
+
+The throughput unit cost (1MB ingress, 2MB egress) comes to an annual cost of
+*$133.92*.
+
 == Reference implementation
+
+The reference implementation of the Azure Functions app can be found in the
+link:https://github.com/jenkins-infra/analytics-functions[jenkins-infra/analytics-functions]
+repository.
+
+The Terraform for actually provisioning the Azure Functions app in Azure can be
+found in
+link:https://github.com/jenkins-infra/azure/pull/12[this pull request].
 
