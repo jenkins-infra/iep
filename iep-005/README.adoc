@@ -46,12 +46,26 @@ merged for new contributors?").
 
 == Specification
 
+The primary source of project events is currently GitHub, which provides
+organization-wide webhooks. This specification focuses primarily on these
+events but can be readily extended when new sources of information arise.
+
+=== Technologies Introduced
+
+This specification introduces a few new technologies which are currently not
+part of the Jenkins project infrastructure:
+
+* link:https://azure.microsoft.com/en-us/services/functions/[Azure Functions]
+* link:https://azure.microsoft.com/en-us/services/event-hubs/[Azure EventHub]
+* link:https://azure.microsoft.com/en-us/services/documentdb/[Azure DocumentDB]
+
+
+The motivations for selecting each of these pieces of technology is discussed
+more in the <<Rationale>> section.
 
 
 
-
-
-
+.Component Diagram
 [source]
 ----
 
@@ -74,6 +88,59 @@ merged for new contributors?").
                            +--------------------------+ +------------------------------+
 ----
 
+
+=== Data Format
+
+The following describes the JSON format to be expected by applications querying
+either DocumentDB or consuming from an EventHub.
+
+.JSON Event/Document Format
+[source,json]
+----
+{
+    "source"   : "github", // <1>
+    "type"     : "pull_request", // <2>
+    "event"    : {}, // <3>
+    "received" : "2017-01-05T21:56:04.522Z" // <4>
+}
+----
+<1> Original source of the event, `"github"` indicates the event originated as a GitHub webhook.
+<2> Type of event, in the case of the `github` source, this will be one of the link:https://developer.github.com/webhooks/#events[webhook event types].
+<3> The actual JSON payload of the event.
+<4> The ISO-8601 timestamp indicating when the event was received by the Azure Functions app
+
+This table should be updated when new sources and types are added:
+
+.Event Sources
+|===
+| Identifier | Description | Types
+
+| `github`
+| A GitHub webhook payload
+| One of the link:https://developer.github.com/webhooks/#events[webhook event types].
+
+|===
+
+
+=== Storage Capacity
+
+The <<Cost>> for Azure DocumentDB storage is only based on what is _actually_
+consumed rather than what is provisioned. Therefore each DocumentDB provisioned
+for events should be at minimum *25GB*.
+
+Time-to-live:: Azure DocumentDB supports a document or collection-level time-to-live (TTL), which
+can automatically purge documents after the TTL expires. Until we better
+understand the amount of events data the project wishes to store, this will
+remain *off*.
+Consistency:: Until a compelling reason to change the consistency level for the
+DocumentDB resources, the default of *session* consistency should be used.
+
+
+=== Monitoring
+
+XXX
+
+
 == Motivation
 
 By provisioning relatively simple webhook receivers which not only archive
@@ -85,6 +152,49 @@ dashboard) without requiring additional infrastructure to be provisioned.
 
 
 == Rationale
+
+=== Technologies Introduced
+
+An underlying rationale for using all of the Azure-specific technologies
+referenced below is that it is cheaper, easier, and faster to use
+platform-level services provided by Azure rather than implementing and hosting
+the features of each technology itself.
+
+==== Azure Functions
+
+Implement a GitHub webhook receiver in Azure Functions is sufficiently trivial
+that it is one of
+link:https://docs.microsoft.com/en-us/azure/azure-functions/functions-create-a-web-hook-or-api-function[their "Get Started" examples],
+and as such Azure Functions has explicit support and ehancements for receiving
+webhook payloads from GitHub.
+
+Additionally, Azure Functions represent a "slice" of computation which is
+suitable for the purpose of receiving a JSON payload, processing it, and
+storing it for later. This as opposed to implementing a new web application
+specifically for this purpose which would need either its own virtual machine
+or container infrastructure in order to execute.
+
+
+==== Azure EventHub
+
+The use of Azure EventHub in the architecture described above is more
+future-proofing than a strong requirement to solve the problem at hand. The
+assumption being that additional services in the future will wish to consume
+some or all of the events received by the deployed Azure Functions app.
+
+The most practical means of providing this service internally is through a
+pub/sub mechanism which EventHubs provide in Azure. EventHubs also provide the
+added benefit of automatically expiring old messages along with many other
+valuable queueing features such as consumer groups and partitions.
+
+
+==== Azure DocumentDB
+
+GitHub webhook event payloads are constructed as JSON, and it is expected that
+any subsequent events will be consumed as JSON. As such, a document-oriented
+database ("NoSQL") is preferred in order to avoid time-consuming schema
+updates.
+
 
 == Costs
 
