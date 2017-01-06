@@ -74,22 +74,16 @@ more in the <<Rationale>> section.
 ----
 
 +--------------------+                  +----------------------------+            +--------------+
-| GitHub (jenkinsci) +----webhook--+    |  github-event-queue (App)  |      +----->   EventHub   |
-+--------------------+             |    +----------------------------+      |  +--> (all events) |
-+------------------------+         |    |                            +------+  |  +--------------+
-| GitHub (jenkins-infra) +-------+ +---->                            +--+      |
-+------------------------+       |      |                            |  |      |
-                              webhook   | determine which datastore  |  |   enqueue
-                                 |      |  the event should go into  |  |      |
-                                 +------>                            +---------+
-                                        |                            +-------+
-                                        +----------------------------+  |    |
-                                                                        |    |
-                                          +-----------append------------+  append
-                                          |                                  |
-                           +--------------v-----------+ +--------------------v---------+
-                           |  DocumentDB (jenkinsci)  | |  DocumentDB (jenkins-infra)  |
-                           +--------------------------+ +------------------------------+
+| GitHub (jenkinsci) +----webhook------>|  github-event-queue (App)  +--enqueue-->|   EventHub   |
++--------------------+           +----->+----------------+-----------+            | (all events) |
++------------------------+       |                       |                        +--------------+
+| GitHub (jenkins-infra) +-------+                       |
++------------------------+                               |
+                                          +----append----+
+                                          |
+                           +--------------v--------+
+                           |  DocumentDB (github)  |
+                           +-----------------------+
 ----
 
 
@@ -234,10 +228,9 @@ storage and transit rates.
 The storage rate, in East US, is *$0.25 per GB / month*. The throughput rate, in East US, is *$0.008/hr* per hundred
 link:https://docs.microsoft.com/en-us/azure/documentdb/documentdb-manage#request-units-and-database-operations[Request Units per second].
 
-Assuming each DocumentDB instance (`jenkinsci` and `jenkins-infra`
-respectively) is provisioned with 5GB of storage, the annual storage cost will
-be roughly *$30*. Though this is likely to go up as more data is stored over
-time.
+Assuming each DocumentDB instance is provisioned with 5GB of storage, the
+annual storage cost will be roughly *$15*. Though this is likely to go up as
+more data is stored over time.
 
 The throughput rate's annual cost is difficult to ascertain without real-world
 usage, but is expected to remain under *$100* barring dramatic shifts in
