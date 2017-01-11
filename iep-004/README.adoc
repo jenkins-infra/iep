@@ -243,6 +243,7 @@ cons:
 
 * Container names must respect a specific format.
 * We must changed container name to change log type
+* We can't have several type of logs within an application
 
 .3) We define logs's type based on container's label.
 We define a label 'log_type' with default value set to 'stream'.
@@ -256,7 +257,7 @@ pros:
 * Easy to handle from fluentd configuration.
 
 cons:
-* ?
+* We can't have several type of logs within an application
 
 
 A prototype of this architecture can be found in Olivier Vernin's
