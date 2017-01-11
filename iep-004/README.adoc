@@ -126,7 +126,7 @@ and the Microsoft
 link:http://www.microsoft.com/en-us/cloud-platform/operations-management-suite[Operations Management Suite]
 (OMS).
 
-Fluentd container will handle logs based on rules defined by log's type.
+Fluentd container will redirect logs based on rules defined by log's type.
 
 As a first iteration, we identify two log's type, archive and stream.
 They are explain more in depth below.
@@ -142,7 +142,7 @@ Reasons why we consider logs a 'stream log' are:
 * Costs, we don't want to pay for useless logs' storage 
 * Debugging, we may have to analyze application's behaviour
 
-'Stream' logs will be stored on azure log analytics for 7 days and then trashed.
+'Stream' logs will be stored on azure log analytics for 7 days and then deleted.
 
 In order to retrieve logs informations, we'll need access to log analytics dashboard.
 
@@ -165,9 +165,9 @@ mount azure shared disks.
 ==== Logging Strategy 
 Logs work as follow:
 
-* Docker containers write logs to json files located in /var/log/containers/
-* Each kubernetes agent run one fluentd container(daemonset) that read logs from /var/log/containers
-and apply 'rules'
+* Docker containers write logs to json files located in /var/log/containers/ on each kubernetes agent
+* Each kubernetes agent run one fluentd container( as a daemonset) that read logs from /var/log/containers
+and apply some 'rules'
 
 
 .Data flow for k8s logs
@@ -178,7 +178,7 @@ and apply 'rules'
 |                                            +------------+    |
 |                                            |Container_A |    |
 |                                            |            |    |
-| K8s agent FS:                              +---------+--+    |
+| Agent Filesystem:                          +---------+--+    |
 | +--------------------+      <send_logs_to            |       |
 | |/var/log/containers |<------------------------------+       |
 | +----------+---------+                               |       |
@@ -186,16 +186,16 @@ and apply 'rules'
 |            |                               |Container_B |    |
 | Fetch_logs |                               |            |    |
 |            v                               +------------+    |         +--------------------+
-|      +----------+    apply_rule_stream_logs_to  ---------------------->| Azure LogAnalytics |
-|      |Fluentd   +------------------------------/             |         +--------------------+
-|      |Container +------------------------------\             |         +--------------------+
-|      +----------+   apply_rule_archive_logs_to  ---------------------->| Azure Blob Storage |
+|      +----------+    apply_rule_1_stream_logs_to --------------------->| Azure LogAnalytics |
+|      |Fluentd   +-------------------------------/            |         +--------------------+
+|      |Container +-------------------------------\            |         +--------------------+
+|      +----------+   apply_rule_0_archive_logs_to --------------------->| Azure Blob Storage |
 |                                                              |         +--------------------+
 +--------------------------------------------------------------+
 ....
 
 
-In order to know howto apply rules, we can follow 3 strategies.
+In order to know howto apply rules, we can follow one of the 3 following strategies.
 
 *We must agree with one of them*
 
@@ -211,18 +211,19 @@ Default apache access log
 
 Apache access log with type information
 ....
-TO_ARCHIVE_PATTERN 127.0.0.1 - - [05/Feb/2012:17:11:55 +0000] "GET / HTTP/1.1" 200 140 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.5 Safari/535.19"
+TO_ARCHIVE 127.0.0.1 - - [05/Feb/2012:17:11:55 +0000] "GET / HTTP/1.1" 200 140 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.5 Safari/535.19"
 ....
 
 Pos: 
 
-* Better granularity as we can define different log type within an application (ERRO,INFO,...)
+* More flexible, we can define log type per log level
 
 Cons:
 
 * Error prone, fluentd doesn't know any formats or contents for parsed logs.
 * More configurations: we need to modify default logs configuration.
 * More work for contributors
+* We Need logging knowledge for each application
 * We must rebuild docker image if we want to change log type
 
 
@@ -241,9 +242,9 @@ pros:
 
 cons:
 
-* Container names must respect a specific format.
-* We must changed container name to change log type
+* We can't update container log type at runtime
 * We can't have several type of logs within an application
+* We add meanings in containers' name
 
 .3) We define logs's type based on container's label.
 We define a label 'log_type' with default value set to 'stream'.
@@ -253,12 +254,13 @@ pros:
 
 * We don't have to modify default logging configuration.
 * We don't have to rebuild docker image when we change log type.
-* Contributors only have to define log_type in containers' label.
+* We don't have to restart docker container when we modify log type.
 * Easy to handle from fluentd configuration.
 
 cons:
-* We can't have several type of logs within an application
+* We can't have different log type within an application
 
+I think the best way to go would be to use labels
 
 A prototype of this architecture can be found in Olivier Vernin's
 link:https://github.com/olblak/fluentd-k8s-azure[fluentd-k8s-azure]
