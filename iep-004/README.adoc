@@ -134,13 +134,13 @@ They are explain below.
 
 ==== Type
 ===== Stream
-'Stream' means that logs are directly send to log analytics 
+'Stream' means that logs are directly send to log analytics
 where they will be available for a short time period (7 days).
 After what they will be definitively deleted.
 
 Reasons why we consider logs as 'stream' are:
 
-* Costs, we don't want to pay for useless logs' storage 
+* Costs, we don't want to pay for useless logs' storage
 * Debugging, we may have to analyze application's behaviour
 
 In order to retrieve logs informations, we'll need an access to log analytics dashboard.
@@ -155,12 +155,12 @@ In order to retrieved them, we'll have to request compressed archives from an ad
 
 Reasons why we may consider logs as 'archive' are:
 
-* Need long time period access 
+* Need long time period access
 * Want to backup important informations
 
 N.B:
 
-* We prefer to use Azure container over Azure Shared Disk as we can access logs without having to 
+* We prefer to use Azure container over Azure Shared Disk as we can access logs without having to
 mount azure shared disks.
 * At the moment the fluentd plugin for azure storage doesn't work as expect (this should be fixed).
 So we use azure shared disk.
@@ -176,7 +176,7 @@ and apply some 'rules'
 .Data flow for k8s logs
 [source]
 ....
-+--------------------------------------------------------------+                                                                                                
++--------------------------------------------------------------+
 | K8s Agent:                                                   |
 |                                            +------------+    |
 |                                            |Container_A |    |
@@ -205,7 +205,7 @@ By convention we use label 'logtype'.
 If logtype == 'archive', we apply 'archive' workflow.
 Otherwise we apply 'stream' workflow.
 
-pros: 
+pros:
 
 * We don't have to modify default logging configuration.
 * We don't have to rebuild docker image when we change log type.
