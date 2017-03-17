@@ -158,13 +158,6 @@ Reasons why we may consider logs as 'archive' are:
 * Need long time period access 
 * Want to backup important informations
 
-N.B:
-
-* We prefer to use Azure container over Azure Shared Disk as we can access logs without having to 
-mount azure shared disks.
-* At the moment the fluentd plugin for azure storage doesn't work as expect (this should be fixed).
-So we use azure shared disk.
-
 ==== Logging Workflow
 Logs work as follow:
 
