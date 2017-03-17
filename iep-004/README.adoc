@@ -134,13 +134,13 @@ They are explain below.
 
 ==== Type
 ===== Stream
-'Stream' means that logs are directly send to log analytics 
+'Stream' means that logs are directly send to log analytics
 where they will be available for a short time period (7 days).
 After what they will be definitively deleted.
 
 Reasons why we consider logs as 'stream' are:
 
-* Costs, we don't want to pay for useless logs' storage 
+* Costs, we don't want to pay for useless logs' storage
 * Debugging, we may have to analyze application's behaviour
 
 In order to retrieve logs informations, we'll need an access to log analytics dashboard.
@@ -155,10 +155,9 @@ In order to retrieved them, we'll have to request compressed archives from an ad
 
 Reasons why we may consider logs as 'archive' are:
 
-* Need long time period access 
+* Need long time period access
 * Want to backup important informations
 
-==== Logging Workflow
 Logs work as follow:
 
 * Docker containers write logs to json files located in /var/log/containers/ on each kubernetes agent
@@ -169,7 +168,7 @@ and apply some 'rules'
 .Data flow for k8s logs
 [source]
 ....
-+--------------------------------------------------------------+                                                                                                
++--------------------------------------------------------------+
 | K8s Agent:                                                   |
 |                                            +------------+    |
 |                                            |Container_A |    |
