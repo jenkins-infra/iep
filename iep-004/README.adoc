@@ -158,14 +158,6 @@ Reasons why we may consider logs as 'archive' are:
 * Need long time period access
 * Want to backup important informations
 
-N.B:
-
-* We prefer to use Azure container over Azure Shared Disk as we can access logs without having to
-mount azure shared disks.
-* At the moment the fluentd plugin for azure storage doesn't work as expect (this should be fixed).
-So we use azure shared disk.
-
-==== Logging Workflow
 Logs work as follow:
 
 * Docker containers write logs to json files located in /var/log/containers/ on each kubernetes agent
@@ -223,11 +215,93 @@ repository.
 
 === Deployment/Orchestration
 
-[NOTE]
-====
-This section is still a work in progress, awaiting and prototyping by
-link:https://github.com/olblak[Olivier Vernin]
-====
+As we made the decision to use a kubernetes infrastructure, +
+We still need processes and tools to automate and tests kubernetes deployment.
+
+Kubernetes use : +
+
+- Yaml files to define infrastructure state
+- Kubectl cli to interact with kubernetes cluster (CRUD operations)
+
+Because using kubectl to deploy yaml files is idempotent,we can easily script it.
+
+We investigated two approaches to automate k8s deployment
+
+1. Using Jenkins + scripting to apply configurations
+2. Using Puppet to apply configurations
+
+==== Jenkins
+Each time we need to apply modifications, we just have to create/update yaml configurations files
+and let jenkins deploy it. +
+Fairly easy as kubectl is idempotent so we just have to follow this process. +
+
+.Jenkins
+    +-------------+                           +----------------+
+    |             |                           |     Github     |
+    | Contributor +-------------------------> |  jenkins-infra |
+    |             |       Commit              |                |
+    +-------------+        code               +--------+-------+
+                                                       |
+                                                       |   Trigger
+    +-----------------+                                | Test&Deploy
+    | K8s cluster     |                                v
+    | +-----+ +-----+ |                       +--------+-------+
+    | |Node | |Node | |                       |     Jenkins    |
+    | |  1  | | 2   | <-----------------------|   Jenkinsfile  |
+    | +-----+ +-----+ | Apply configurations  +----------------+
+    +-----------------+
+
+But:
+
+- How do we share/publish secret informations, credentials,...? +
+    A solution would be to encrypt secrets with password or gpg keys before pushing them
+    on git repository.
+    Jenkins will have to unencrypt them before deploying them on kubernetes cluster.
+- How do we handle resources ordering? +
+    We can use naming conventions to be sure that resource 00-secret.yaml will be deploy before 01-daemonset.yaml
+- Is some case, complexe logics need to be apply to achieve correct deployments. +
+  Which can be done through scripting like bash,python,... +
+  Ex: Updating k8s secrets, do not update secrets used in containers applications.
+  which mean that each time we update secrets, we also have to take care of pods using them
+
+Problems explained above are common concerns that configuration management tools try to solve.
+
+==== Puppet
+We may also use puppet to template and apply kubernetes configurations files.
+Main advantages:
+- We already have a puppet environment configured and correctly working
+- We already have a good testing process with puppet, linting, rspec,...
+- We already have a deployment workflow, feature branch -> staging -> production
+- We can use hiera to store secrets
+- We can use puppet to define complexe scenarios
+
+.Puppet
+
+    +-------------+                      +----------------+
+    |             |                      |     Github     |
+    | Contributor +--------------------> |  jenkins-infra |
+    |             |       Commit         |                |
+    +-------------+        code          +--------+-------+
+                                                  |
+                                                  | Trigger
+    +-----------------+                           |  Test
+    | K8s cluster     |                           |
+    | +-----+ +-----+ |                  +--------v-------+
+    | |Node | |Node | |                  |     Jenkins    |
+    | |  1  | | 2   | |                  |   Jenkinsfile  |
+    | |     | |     | |                  +--------+-------+
+    | +-----+ +-----+ |                           |
+    +--------+--------+                           |   Merge
+             ^                                    | Production
+             |                                    |
+             |                           +--------v-------+
+             |                           |     Puppet     |
+             +---------------------------+     Master     |
+                Apply configurations     +----------------+
+
+==== Conclusion
+We agreed that we gonna use puppet to deploy kubernetes configurations.
+If needed we are still able to use another solution.
 
 == Motivation
 
