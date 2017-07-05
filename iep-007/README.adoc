@@ -1,0 +1,138 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-007: Kubernetes cluster upgrade
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 007
+
+| Title
+| Kubernetes cluster upgrade 
+
+| Author
+| link:https://github.com/olblak[Olblak]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| [Process]
+
+| Created
+| 2016-07-04
+|===
+
+
+
+== Abstract
+
+As Kubernetes project often releases new versions, it's interesting to enjoy new features or bugfixes introduced by those new versions. 
+Therefor we need an easy way to upgrade Kubernetes cluster on a regular basis.
+
+
+== Specification
+
+Currently there is two main strategies to upgrade a cluster. +
+
+. Upgrading an existing cluster.
+. Migration on a second cluster.
+
+As Azure do not (yet) provide any tools to upgrade existing clusters, we have to upgrade them manually.  +
+It appears to be easier and safer to deploy a new cluster and re-deploy all resources on the new one.
+
+Until the new cluster stays in the same region than the previous one, we can keep persistent data from blob storage and attach them to the new cluster. +
+The only important element that we loose when we migrate to a new cluster, is the cluster public IP. +
+This means that we need to update 'nginx.azure.jenkins.io' with the public IP.
+
+=== Migration Process
+
+IMPORTANT: The old cluster must be kept until the new one is ready to served requests.
+
+==== Step 1 : Backup
+
+. Backup secrets containing Letsencrypt certificates. (Manual operation)
+
+==== Step 2 : Deploy the new cluster
+
+. Add a second k8s resource in github.com/jenkins-infra/azure, named 'peak8s' (Require PR on jenkins-infra/azure)
+. Update following hieraconfig variables (Require PR on jenkins-infra/jenkins-infra)
+----
+profile::kubernetes::kubectl::server 
+profile::kubernetes::kubectl::username 
+profile::kubernetes::kubectl::clustername 
+profile::kubernetes::kubectl::certificate_authority_data
+profile::kubernetes::kubectl::client_certificate_data
+profile::kubernetes::kubectl::client_key_data
+----
+
+. Remove /home/k8s/resources (Manual operation)
+. Re-apply puppet agent with updated variables (Manual operation)
+. Wait for the new public IP (Manual operation)
+----
+kubectl get service nginx --namespace nginx-ingress
+----
+. Restore backed up secrets containing Letsencrypt certificates on the new cluster (Manual operation)
+. Validate that everything work as expected (Manual operation)
+
+==== Step 2: Update DNS from old to new cluster
+. Update nginx.azure.jenkins.io with the new cluster public IP (Require PR on jenkins-infra/jenkins-infra)
+
+[NOTE]
+During DNS update, requests will be send either to the new cluster, either to the old cluster.
+Users shouldn't detect any differences.
+
+==== Step 3: Remove the old cluster
+. Remove k8s.tf from jenkins-infra/azure (Require PR on jenkins-infra/azure)
+
+
+==== Conclusion
+With this scenario, in theory we shouldn't have any downtime as HTTP/HTTPS requests will have almost (depending on the service) the same respond whatever we reach the old or the new cluster.
+
+
+
+== Motivation
+
+We would like to enjoy improvements from bugfixes and new features.
+
+It's also easier to follow Kubernetes documentation if we use a version close to the upstream version.
+
+Finally as testing environments have short lives, we create them to validate deployments, migrations then we trash them, they often use the latest version available from Azure.
+This means that we may not detect issues when those versions are not aligned with production
+
+== Rationale
+
+There isn't any tool to easily upgrade a Kubernetes cluster on Azure so I tried to do it manually.
+
+I only spent one day to try this upgrade but it wasn't trivial.
+I applied following steps manually:
+
+* Update kubelet && kubectl
+* Update Kubernetes options according the version (some options were deprecated and others were new)
+* Reproduce the production cluster in order to validate the migration.
+* Restart each node (master&client) after the upgrade
+
+Even after that I faced weird issues, so I stopped there and concluded that cluster migration was easier and a safer process.
+
+They are several open issues regarding update procedure so I suppose that it may be a possible alternative in the future.
+
+* https://github.com/Azure/ACS/issues/5[Azure/acs]
+* https://github.com/Azure/acs-engine/issues/464[Azure/ace-engine]
+
+== Costs
+
+It will costs a second cluster during the migration but when everything is switched to the new cluster, the previous one can be decommissioned.
+
+
+== Reference implementation
+
+As of right now there is not reference implementation of Kubernetes Cluster upgrade
