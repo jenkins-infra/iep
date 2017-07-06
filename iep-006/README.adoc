@@ -48,11 +48,11 @@ Following elements must be taken into accounts.
 * Jenkins.io only contains static files
 * Endpoint Require HTTP/HTTPS support
 * Use several URL redirection but only one endpoint (https://jenkins.io)
-* Jenkins.io is updated every 30 minutes
+* www.jenkins.io is updated every 30 minutes
 
 === Static website
 
-'jenkins.io' only contains static files which means that using a blob storage for storing
+'www.jenkins.io' only contains static files which means that using a blob storage for storing
 files and azure-cli for updating the website, can be a solution to improve the reliability.
 
 Advantages of this approach are:
@@ -65,16 +65,16 @@ Advantages of this approach are:
 
 === URL
 
-Main website endpoint is 'https://jenkins.io' and everything else should be a permanent redirection to it.
+Main website endpoint is 'https://www.jenkins.io' and everything else should be a permanent redirection to it.
 
 - 'jenkins-ci.org'
-- 'www.jenkins.io'
+- 'jenkins.io'
 - 'www.jenkins-ci.org'
 - HTTP traffic
 
 === Design
 
-We deploy the website on a blob storage and we use web servers deployed on the Kubernetes cluster to process
+We deploy the website on a blob storage (Azure File Storage) and we use web servers deployed on the Kubernetes cluster to process
 HTTP/HTTPS requests, SSL certificate, ...
 
 There are two ways to implement this solution
