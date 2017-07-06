@@ -61,6 +61,12 @@ IMPORTANT: The old cluster must be kept until the new one is ready to served req
 ==== Step 1 : Backup
 
 . Backup secrets containing Letsencrypt certificates. (Manual operation)
+----
+mkdir ~/tls
+.bin/kubectl get secret accountapp-tls --export=true  -o yaml > ~/tls/accountapp.yaml
+.bin/kubectl get secret pluginsite-tls --export=true  -o yaml > ~/tls/pluginsite.yaml
+.bin/kubectl get secret repo-proxy-tls --export=true  -o yaml > ~/tls/repo-proxy.yaml
+----
 
 ==== Step 2 : Deploy the new cluster
 
@@ -82,6 +88,11 @@ profile::kubernetes::kubectl::client_key_data
 kubectl get service nginx --namespace nginx-ingress
 ----
 . Restore backed up secrets containing Letsencrypt certificates on the new cluster (Manual operation)
+----
+.bin/kubectl apply -f ~/tls/accountapp.yaml
+.bin/kubectl apply -f ~/tls/pluginsite.yaml
+.bin/kubectl apply -f ~/tls/repo-proxy.yaml
+----
 . Validate that everything work as expected (Manual operation)
 
 ==== Step 2: Update DNS from old to new cluster
@@ -96,8 +107,7 @@ Users shouldn't detect any differences.
 
 
 ==== Conclusion
-With this scenario, in theory we shouldn't have any downtime as HTTP/HTTPS requests will have almost (depending on the service) the same respond whatever we reach the old or the new cluster.
-
+With this scenario, in theory we shouldn't have any downtime as HTTP/HTTPS requests will almost have (depending on the service) the same response whatever we reach the old or the new cluster.
 
 
 == Motivation
