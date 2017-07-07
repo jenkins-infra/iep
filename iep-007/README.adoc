@@ -71,7 +71,7 @@ mkdir ~/tls
 ==== Step 2 : Deploy the new cluster
 
 . Add a second k8s resource in github.com/jenkins-infra/azure, named 'peak8s' (Require PR on jenkins-infra/azure)
-. Update following hieraconfig variables (Require PR on jenkins-infra/jenkins-infra)
+. Update following hieraconfig variables with new the k8s cluster informations(Require PR on jenkins-infra/jenkins-infra)
 ----
 profile::kubernetes::kubectl::server 
 profile::kubernetes::kubectl::username 
@@ -94,15 +94,20 @@ kubectl get service nginx --namespace nginx-ingress
 .bin/kubectl apply -f ~/tls/repo-proxy.yaml
 ----
 . Validate that everything work as expected (Manual operation)
+----
+curl --header 'Host: plugins.jenkins.io' 'https://<new_public_ip>
+curl --header 'Host: repo-proxy.jenkins.io' 'https://<new_public_ip>
+curl --header 'Host: accounts.jenkins.io' 'https://<new_public_ip>
+----
 
-==== Step 2: Update DNS from old to new cluster
+==== Step 3: Update DNS from old to new cluster
 . Update nginx.azure.jenkins.io with the new cluster public IP (Require PR on jenkins-infra/jenkins-infra)
 
 [NOTE]
 During DNS update, requests will be send either to the new cluster, either to the old cluster.
 Users shouldn't detect any differences.
 
-==== Step 3: Remove the old cluster
+==== Step 4: Remove the old cluster
 . Remove k8s.tf from jenkins-infra/azure (Require PR on jenkins-infra/azure)
 
 
