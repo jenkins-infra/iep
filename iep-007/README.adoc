@@ -50,7 +50,7 @@ Currently there is two main strategies to upgrade a cluster. +
 As Azure do not (yet) provide any tools to upgrade existing clusters, we have to upgrade them manually.  +
 It appears to be easier and safer to deploy a new cluster and re-deploy all resources on the new one.
 
-Until the new cluster stays in the same region than the previous one, we can keep persistent data from blob storage and attach them to the new cluster. +
+As long as the new cluster stays in the same region than the previous one, we can use same blob storages and attach them to the new cluster. +
 The only important element that we loose when we migrate to a new cluster, is the cluster public IP. +
 This means that we need to update 'nginx.azure.jenkins.io' with the public IP.
 
