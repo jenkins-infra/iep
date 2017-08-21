@@ -42,87 +42,92 @@ Therefor we need an easy way to upgrade Kubernetes cluster on a regular basis.
 
 == Specification
 
-Currently there is two main strategies to upgrade a cluster. +
+Currently there are two main strategies to "upgrade" a cluster. +
 
 . Upgrading an existing cluster.
-. Migration on a second cluster.
+. Migrating on a second cluster.
 
 As Azure do not (yet) provide any tools to upgrade existing clusters, we have to upgrade them manually.  +
 It appears to be easier and safer to deploy a new cluster and re-deploy all resources on the new one.
 
 As long as the new cluster stays in the same region than the previous one, we can use same blob storages and attach them to the new cluster. +
 The only important element that we loose when we migrate to a new cluster, is the cluster public IP. +
-This means that we need to update 'nginx.azure.jenkins.io' with the public IP.
+This means that we need to update 'nginx.azure.jenkins.io' with a new public IP.
 
 === Migration Process
 
-IMPORTANT: The old cluster must be kept until the new one is ready to served requests.
+IMPORTANT: The old cluster must be kept until the new one is ready to serve requests.
 
-==== Step 1 : Backup
+==== Step 1: Backup
 
-. Backup secrets containing Letsencrypt certificates. (Manual operation)
+Ensure secrets containing Letsencrypt certificates are exported. (Require https://github.com/jenkins-infra/jenkins-infra/pull/819[#PR819]) +
+A cron job should periodically export letsencrypt certificate into `~/backup/$(CLUSTER)/secret.$(APP)-tls.yaml`
+
+.Export a secret
 ----
-mkdir ~/tls
-.bin/kubectl get secret accountapp-tls --export=true  -o yaml > ~/tls/accountapp.yaml
-.bin/kubectl get secret pluginsite-tls --export=true  -o yaml > ~/tls/pluginsite.yaml
-.bin/kubectl get secret repo-proxy-tls --export=true  -o yaml > ~/tls/repo-proxy.yaml
-----
-
-==== Step 2 : Deploy the new cluster
-
-. Add a second k8s resource in github.com/jenkins-infra/azure, named 'peak8s' (Require PR on jenkins-infra/azure)
-. Update following hieraconfig variables with new the k8s cluster informations(Require PR on jenkins-infra/jenkins-infra)
-----
-profile::kubernetes::kubectl::server 
-profile::kubernetes::kubectl::username 
-profile::kubernetes::kubectl::clustername 
-profile::kubernetes::kubectl::certificate_authority_data
-profile::kubernetes::kubectl::client_certificate_data
-profile::kubernetes::kubectl::client_key_data
+.bin/kubectl get secret $(APPLICATION)-tls --export=true --kubeconfig .kube/$(CLUSTER).conf  -o yaml > ~/backup/$(CLUSTER)/secret.$(APPLICATION)-tls.yaml
 ----
 
-. Remove /home/k8s/resources (Manual operation)
-. Re-apply puppet agent with updated variables (Manual operation)
-. Wait for the new public IP (Manual operation)
+==== Step 2: Deploy the new cluster
+
+Add a second k8s resource in github.com/jenkins-infra/azure, named 'pea' (Require https://github.com/jenkins-infra/iep/pull/11[#PR11])
+
+==== Step 3: Configure the new cluster
+
+* Update following hieraconfig variables with new the k8s cluster information(Require PR on jenkins-infra/jenkins-infra)
+
+----
+profile::kubernetes::params::clusters:
+    - server: https://clusterexample1.eastus.cloudapp.azure.com
+      username: clusterexample1-admin
+      clustername: clusterexample1
+      certificate_authority_data: ...
+      client_certificate_data: ...
+      client_key_data: ...
+----
+
+* Run puppet agent
+* Get new public IP (Manual operation)
 ----
 kubectl get service nginx --namespace nginx-ingress
 ----
-. Restore backed up secrets containing Letsencrypt certificates on the new cluster (Manual operation)
+* Restore backed up secrets containing Letsencrypt certificates on the new cluster (Manual operation)
 ----
-.bin/kubectl apply -f ~/tls/accountapp.yaml
-.bin/kubectl apply -f ~/tls/pluginsite.yaml
-.bin/kubectl apply -f ~/tls/repo-proxy.yaml
+.bin/kubectl apply -f ~/backup/$(OLD_CLUSTER)/secret.*-tls.yaml --kubeconfig .kube/$(CLUSTER).conf
 ----
-. Validate that everything work as expected (Manual operation)
+* Validate HTTPS endpoint (Manual operation)
 ----
 curl --header 'Host: plugins.jenkins.io' 'https://<new_public_ip>
 curl --header 'Host: repo-proxy.jenkins.io' 'https://<new_public_ip>
 curl --header 'Host: accounts.jenkins.io' 'https://<new_public_ip>
 ----
 
-==== Step 3: Update DNS from old to new cluster
-. Update nginx.azure.jenkins.io with the new cluster public IP (Require PR on jenkins-infra/jenkins-infra)
+==== Step 4: Update DNS Record 
+
+Update nginx.azure.jenkins.io with the new public IP (Require PR on jenkins-infra/jenkins-infra)
 
 [NOTE]
 During DNS update, requests will be send either to the new cluster, either to the old cluster.
 Users shouldn't detect any differences.
 
-==== Step 4: Remove the old cluster
-. Remove k8s.tf from jenkins-infra/azure (Require PR on jenkins-infra/azure)
+==== Step 5: Remove the old cluster
+Remove k8s.tf from jenkins-infra/azure (Require PR on jenkins-infra/azure)
+
+[NOTE]
+It may be safer to not automate this step, and just delete the good storage account through Azure portal
 
 
 ==== Conclusion
-With this scenario, in theory we shouldn't have any downtime as HTTP/HTTPS requests will almost have (depending on the service) the same response whatever we reach the old or the new cluster.
+With this scenario, we shouldn't have any downtime as HTTP/HTTPS requests will almost have (depending on the service) the same response whatever we reach the old or the new cluster.
 
 
 == Motivation
 
-We would like to enjoy improvements from bugfixes and new features.
-
-It's also easier to follow Kubernetes documentation if we use a version close to the upstream version.
-
-Finally as testing environments have short lives, we create them to validate deployments, migrations then we trash them, they often use the latest version available from Azure.
+As testing environments have short lives, we create them to validate deployments then we trash them so they often use the latest version available from Azure.
 This means that we may not detect issues when those versions are not aligned with production
+We also would like to enjoy improvements from bugfixes and new features.
+It's easier to follow Kubernetes documentation if we use a version close to the upstream version.
+
 
 == Rationale
 
@@ -136,7 +141,7 @@ I applied following steps manually:
 * Reproduce the production cluster in order to validate the migration.
 * Restart each node (master&client) after the upgrade
 
-Even after that I faced weird issues, so I stopped there and concluded that cluster migration was easier and a safer process.
+Even after those operations I faced weird issues, so I decided to stop there and concluded that cluster migration was easier and a safer process.
 
 They are several open issues regarding update procedure so I suppose that it may be a possible alternative in the future.
 
