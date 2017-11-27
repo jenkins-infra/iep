@@ -1,0 +1,171 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-006: Jenkins.io on Azure
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 006
+
+| Title
+| Hosting Jenkins.io on Azure
+
+| Author
+| link:https://github.com/olblak[Olblak]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| [Architecture]
+
+| Created
+| 2017-06-26
+|===
+
+
+
+== Abstract
+
+Currently the main Jenkins website (jenkins.io) runs on a single server. +
+This basic architecture has his limitations in terms of availability and scalability and could be easily improved by using cloud services.
+
+The goal of this document is to design the best solution for a jenkins.io hosted on Azure.
+
+== Specification
+
+Following elements must be taken into accounts.
+
+* Jenkins.io only contains static files
+* Endpoint Require HTTP/HTTPS support
+* Use several URL redirection but only one endpoint (https://jenkins.io)
+* www.jenkins.io is updated every 30 minutes
+
+=== Static website
+
+'www.jenkins.io' only contains static files which means that using a blob storage for storing
+files and azure-cli for updating the website, can be a solution to improve the reliability.
+
+Advantages of this approach are:
+
+* No server to administrate
+* Geo Redundancy
+* Easy files update
+* Good SLA (99.99%)
+
+
+=== URL
+
+Main website endpoint is 'https://www.jenkins.io' and everything else should be a permanent redirection to it.
+
+- 'jenkins-ci.org'
+- 'jenkins.io'
+- 'www.jenkins-ci.org'
+- HTTP traffic
+
+=== Design
+
+We deploy the website on a blob storage (Azure File Storage) and we use web servers deployed on the Kubernetes cluster to process
+HTTP/HTTPS requests, SSL certificate, ...
+
+There are two ways to implement this solution
+
+1. The blob storage is mounted inside the docker container and the container works like a classic web server.
+2. Files in the blob storage are accessed trough a HTTP request, and the container works as a proxy.
+
+At this moment, there is no technical reason to prefer between those two implementation, therefor I suggest to go with
+the blob storage mounted inside the container as we are already doing it for others applications.
+
+Main advantages of this design are:
+
+* We already apply this design for others applications (azure repo proxy, pluginsite).
+* We can use Letsencrypt certificates for HTTPS
+* We can update the website without having to rebuild the docker image
+* We have a full control on redirection/proxy rules.
+
+== Motivation
+Motivations here are essentially to increase reliability, availability and scalability.
+
+== Rationale
+They are a lot of different ways to host a static website and I briefly take a look to some of them here.
+
+=== Dedicated Server
+Running an Apache/Nginx web server on a dedicated server. +
+That's what we are doing at the moment.
+
+Pros:
+
+* We already have the configuration management code to manage it.
+* It's easy to control the cost as we pay dedicated server/virtual machine on a monthly basis.
+* It's easy to do continuous delivery as we only have to upload files on the correct directory.
+
+Cons:
+
+* It requires maintenance, server updates, ...
+* The dedicated server is a single point of failure.
+
+=== Standalone Docker
+The docker image contain everything, the web server and the website. +
+That means that the docker image is self-sufficient.
+This docker image can be deployed on the k8s cluster. +
+
+Pros:
+
+* All docker pros
+
+Cons:
+
+* It adds a lot of complexity to the Continuous Delivery process as the website is updated every 30 min.
+* A lot of docker images will be build per day (up to 48) which means  a lot of layers, spaces used, ...
+* We'll have to manage a big amount of docker image tags, ...
+
+
+=== Standalone Blob Storage
+As 'jenkins.io' is only composed of static files, we can use a blob storage to store
+files and azure-cli to update website content.
+
+Pros:
+
+* No server to administrate
+* Geo Redundancy
+* Easy files update
+* Good SLA (99.99%)
+
+Cons:
+
+* Very basic web server
+** Do not support HTTPS.
+** Do not support URL redirection like 'jenkins-ci.org' -> to 'jenkins.io'
+** URL follow this format 'http://<subdomain.customdomain>/<mycontainer>/<myblob>'
+
+=== Blob Storage + CDN
+
+Add a CDN in front of a blob storage
+
+Pros:
+
+* Provide HTTPS
+* Increase performance
+* Same than Standalone blob storage
+
+Cons:
+
+* Costs
+* Do not support domain redirection
+
+== Costs
+
+At this moment, it's hard to evaluate the price of this change as Azure blob storage pricing depends on several factors like number of requests done or the amount of data stored.
+
+== Reference implementation
+
+This implementation works exactly like https://github.com/jenkins-infra/jenkins-infra/tree/staging/dist/profile/templates/kubernetes/resources/repo_proxy[Repo-proxy], excepted that instead of getting contents from Artifactory and caching the results on the blob storage, we get contents from a blob storage.
