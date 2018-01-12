@@ -97,9 +97,10 @@ kubectl get service nginx --namespace nginx-ingress
 ----
 * Validate HTTPS endpoint (Manual operation)
 ----
-curl --header 'Host: plugins.jenkins.io' 'https://<new_public_ip>
-curl --header 'Host: repo-proxy.jenkins.io' 'https://<new_public_ip>
-curl --header 'Host: accounts.jenkins.io' 'https://<new_public_ip>
+curl -I https://jenkins.io --resolve "jenkins.io:443:<new_ingress_ip>"
+curl -I https://plugins.jenkins.io --resolve "plugins.jenkins.io:443:<new_ingress_ip>"
+curl -I https://repo.azure.jenkins.io --resolve "repo.azure.jenkins.io:443:<new_ingress_ip>"
+...
 ----
 
 ==== Step 4: Update DNS Record 
