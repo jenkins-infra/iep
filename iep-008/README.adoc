@@ -74,9 +74,9 @@ This can be easily done with the kubernetes resource 'service'.
 === Backup/Restore
 The procedure to backup/restore the database should be easy, two scripts are provided by the same docker image that run ldap. +
 Backups must be stored on an Azure File Storage in order to simplify their access from various location. +
-A backup name must respect this date format 'YYYYmmddHHMM'
+Backup name must respect format 'YYYYmmddHHMM'
 
-Backups and restore operation should be done in following situations:
+Backups and restore operation must be done in following situations:
 
 [cols="1a,2a", options="header"]
 .Backup/Restore
@@ -90,8 +90,8 @@ Backups and restore operation should be done in following situations:
 |===
 
 === Certificate
-Certificate are loaded at service boot and any certificate change means a service restart.
-This can be improved as soon as the container use dynamic configuration.
+I didn't find an easy way to use Letsencrypt certificate from Kube-lego, the constraint that I have at the moment is
+ingress resources and service resources don't/can't use the same public IP.
 
 === Data
 The ldap database must be store on a stable storage that can be easily mounted/unmounted.
@@ -135,7 +135,7 @@ ReadWriteMany +
 Unfortunately OpenLdap doesn't run well on CIFS partition, so this solution doesn't work at the moment.
 
 ==== Conclusion
-It seems safer as a first iteration to use a dedicated azure disk storage even if it complexify cluster upgrade.
+Considering that it only takes 5seconds to backup/restore a ldap database, using a dynamic azure disk storage sounds reasonable.
 
 == Motivation
 The motivation here is to benefit from both Kubernetes and Azure services advantages. +
