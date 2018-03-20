@@ -20,7 +20,7 @@ endif::[]
 | Ldap on Kubernetes
 
 | Author
-| link:https://github.com/olblak[Olblak]
+| link:https://github.com/olblak[Olivier Vernin]
 
 | Status
 | :speech_balloon: In-process
@@ -47,6 +47,7 @@ Currently the ldap server is running on a bare metal machine and is configured b
 The objective here, is to dockerize this application in order to run it on a kubernetes cluster.
 
 As a stateful application, we must take into consideration following aspect when deploying the ldap server in production.
+
 
 === Access
 Ldap must be accessible from inside and outside the kubernetes cluster.
@@ -90,12 +91,29 @@ Backups and restore operation must be done in following situations:
 |===
 
 === Certificate
-I didn't find an easy way to use Letsencrypt certificate from Kube-lego, the constraint that I have at the moment is
-ingress resources and service resources don't/can't use the same public IP.
+https://issues.jenkins-ci.org/browse/INFRA-1151[INFRA-1151]
+
+Letsencrypt can be configured with two different methods
+
+*HTTP-01*
+
+HTTP-01 configuration needs an Ingress resource that listen on port 443, but this ingress resource cannot be configured to also listening port 389/636.
+It means that we need a service for listening port 389/636 unfortunately this service don't handle Letsencrypt certificate requests.
+Therefor we would need both resources type, and they can't be configured with the same public IP.
+So this method doesn't work.
+
+
+*DNS-01*
+
+DNS-01 configuration only works with Google/AWS/Cloudflare.
+
+*Conclusion*
+I didn't find an easy way to use Letsencrypt certificate from kube-lego(deprecated)/cert-manager so
+we have to go with a manual requested ssl certificate.
 
 === Data
 The ldap database must be store on a stable storage that can be easily mounted/unmounted.
-Currently there are no perfect solutions as each solution has advantages and disadvanteges.
+Currently there are no perfect solutions as each solution has advantages and disadvantages.
 
 ==== Dedicated Azure Disk storage
 ReadWriteOnce
@@ -109,7 +127,7 @@ ReadWriteOnce
 * We only have to restore a backup once.
 |
 * Complexify cluster upgrade, https://github.com/jenkins-infra/iep/tree/master/iep-007[iep-007],
-traffic will be redirected to the new server once the old is delete.
+traffic will be redirected to the new server once the old is deleted.
 * It means downtime when we upgrade the container as we must delete the old container before starting the new one.
 |===
 
@@ -122,7 +140,7 @@ ReadWriteOnce
 |+
 |-
 |
-* Persistent data associated to a cluster lifecycle
+* Persistent data associated to a cluster life cycle
 * Simplify cluster migration, new cluster can be started even if the old cluster is still running
 |
 * We must restore a backup on each new kubernetes cluster deployment
@@ -132,10 +150,44 @@ ReadWriteOnce
 
 ==== Azure File storage
 ReadWriteMany +
-Unfortunately OpenLdap doesn't run well on CIFS partition, so this solution doesn't work at the moment.
+After running some tests, I noticed bad behaviors while running openldap on CIFS partition.
+Like 'permission denied issues' even if the blob storage was mounted as a ldap user,
+or database restore that hangs forever, ...
+At the end, I decided to not invest further time into this solution.
 
 ==== Conclusion
 Considering that it only takes 5seconds to backup/restore a ldap database, using a dynamic azure disk storage sounds reasonable.
+
+=== Kubernetes Design
+.Kubernetes Schema
+[source]
+....
++----------------------------------------------------------------------------------------------+
+| Namespace: Ldap                                                                              |
++----------------------------------------------------------------------------------------------+
+|                                                                                              |
+|                 +----------------------------------+    +----------------------------------+ |
++---------------+ | Statefulset: Ldap                |    | PersistentVolume: ldap-backup    | |
+|Service: Ldap  | +----------------------------------+    +----------------------------------+ |
++---------------+ |   +---------------------------+  |    | * Terraform Lifecycle            | |
+| * Ldap (389)  | |   | POD: ldap-0               |  |    | * ReadWriteMany                  | |
+| * Ldaps (636) | |   +---------------------------+  |<--------------------------------------+ |
++---------------+ |   | +----------------------+  |  |    +----------------------------------+ |
+|      |          |   | | Container: Slapd     |  |  |    | PersistentVolume: ldap-data      | |
+|      |          |   | +----------------------+  |  |    +----------------------------------+ |
+|      |          |   | | * Ldap server        |  |  |    | * ClusterLife cycle              | |
+|      +--------->|   | +----------------------+  |  |<---+ * ReadWriteOnce                  | |
+|                 |   |                           |  |    +----------------------------------+ |
+|                 |   | +----------------------+  |  |                                         |
+|                 |   | | Container: Crond     |  |  |<---+----------------------------------+ |
+|                 |   | +----------------------+  |  |    | Secret: Ldap                     | |
+|                 |   | | * Backup Task        |  |  |    +----------------------------------+ |
+|                 |   | +----------------------+  |  |    | * SSL certificate                | |
+|                 |   |                           |  |    | * Blob storage credentials       | |
+|                 |   +---------------------------+  |    | * Ldap credentials               | |
+|                 +----------------------------------+    +----------------------------------+ |
++----------------------------------------------------------------------------------------------+
+....
 
 == Motivation
 The motivation here is to benefit from both Kubernetes and Azure services advantages. +
@@ -149,7 +201,10 @@ In addition of the Kubernetes cluster that we are already paying for, we'll need
 * LoadBalancer
 * Azure file storage account for backup
 * Disk Storage account for Data
+* Ssl certificate `Ldap.jenkins.io`
 
 == Reference implementation
 * https://github.com/jenkins-infra/ldap[Docker Container]
 * https://github.com/jenkins-infra/jenkins-infra/pull/943[Jenkins-infra PR#943]
+* https://github.com/jenkins-infra/azure/pull/45[Azure PR#45]
+* https://issues.jenkins-ci.org/browse/INFRA-1131[JIRA Issue]
