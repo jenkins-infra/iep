@@ -1,0 +1,148 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-9: Incremental builds Maven repository
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 9
+
+| Title
+| Incremental builds Maven repository
+
+| Author
+| link:https://github.com/rtyler[R Tyler Croy]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| Architecture
+
+| Created
+| 2018-03-19
+
+| Discussions-To
+| link:http://lists.jenkins-ci.org/pipermail/jenkins-infra/2018-March/001417.html[infra@lists.jenkins-ci.org]
+
+|===
+
+
+== Abstract
+
+In order to support more rapid continuous delivery models, such as that
+described by
+link:https://github.com/jenkinsci/jep/tree/master/jep/300[Jenkins Essentials],
+Jenkins core and plugin builds must be deployed into a Maven repository much
+more incrementally rather than waiting for a developer to manually deploy a
+release to the existing `releases` footnote:[https://repo.jenkins-ci.org/releases/]
+repository.
+
+
+== Specification
+
+For a more incremental developer workflow, rather than attempting to make sense
+of potentially thousands of `SNAPSHOT` versions of artifacts in a repository.
+this document proposes a specific and tightly controlled Maven repository for
+such builds.
+
+This would mean Artifactory would have an `incrementals` repository *just* for
+these kinds of pre-release builds. For example, rather than
+`git-client-2.4.0-SNAPSHOT.jar` the repository would contain
+`git-client-2.4.0-a3dbf.jar`, assuming `a3dbf` is the Git short-commit for the
+build.
+
+=== Garbage Collection
+
+Artifacts in the `incrementals` repository must be garbage collected to the
+most recent 5 artifacts **or** the most recent 30 days of artifacts. For
+example, if a plugin (`io.jenkins.plugins.retrocean`) has no new commits in a
+30 day period, the `io/jenkins/plugins/retrocean/` directory should have no
+more than the five most recent artifacts stored. More active plugins should
+have no more than 30 days worth of artifacts stored.
+
+
+[NOTE]
+====
+Plugin and core tooling should use a consistent format for defining incremental
+built versions, such as: `<artifactId>-<major>.<minor>.<patch>-<sha1>.jar`. The
+specific format is not required for this document.
+====
+
+
+== Motivation
+
+By adding this new, somewhat ephemeral, Maven repository, we can support newer
+development workflows in the Jenkins project without adversely affecting the
+existing "mainstream" development workflow of Jenkins plugins.
+
+As mentioned briefly in <<costs>>, overhead is sufficiently low to adding that
+adding a new Maven repository, even if it's experimental and eventually
+abandoned, is worth the exploration.
+
+== Rationale
+
+A Maven repository hosted in Artifactory, alongside the `releases` and a number
+of other repositories, results in the simplest to deploy, and simplest to
+consume "bucket of artifacts" we currently have at our disposal.
+
+In order to avoid over-reliance on these "incremental builds", the artifacts
+themselves should be expected to be deleted after the specified "garbage
+collection" period.
+
+
+=== Alternate Approaches
+
+==== Azure Storage Container
+
+One alternative approach which was briefly discussed in person with
+link:https://github.com/carlossg[Carlos Sanchez] was to drop these
+"incremental build" artifacts directly into an Azure storage container.
+
+This approach was rejected as it would require additional non-native tooling to
+be used in the development workflow. By adopting a Maven repository, existing
+tools for grabbing Maven dependencies can be utilized by developers wishing to
+incorporate "incremental builds" into their build and test workflows.
+
+
+==== Existing Maven Repository
+
+Re-using the existing `releases` Maven repository was explicitly _not_
+considered as an alternative approach as the Jenkins infrastructure team has
+had multiple performance issues
+footnote:[http://lists.jenkins-ci.org/pipermail/jenkins-infra/2017-December/001349.html]
+with that repository over the past couple of months. Most notably, the indexing
+times in the repository have varied between 10 minutes and over 60 minutes due
+to opaque server-side issues. The consequence of adding more load, and many
+more artifacts, to the repository would severely affect the indexing time and
+adversely affect the ability for Jenkins users to receive new plugin updates in
+the Update Center footnote:[https://updates.jenkins.io].
+
+
+[[costs]]
+== Costs
+
+As Artifactory is a hosted service provided by link:https://jfrog.com[JFrog],
+it is not expected that any additional financial cost will be involved in this
+proposal.
+
+Additionally, since this document proposes an additional repository, it is not
+expected to incur any substantial runtime/performance cost on the existing
+Update Center and `releases` repository indexing process.
+
+
+== Reference implementation
+
+Since we have no staging implementation of Artifactory, there is no reference
+implementation, acceptance of this IEP document would result in a new
+repository being created on
+link:https://repo.jenkins-ci.org[repo.jenkins-ci.org].
