@@ -1,0 +1,210 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-008: Ldap on Kubernetes
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 8
+
+| Title
+| Ldap on Kubernetes
+
+| Author
+| link:https://github.com/olblak[Olivier Vernin]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| Architecture
+
+| Created
+| 2018-01-31
+|===
+
+
+
+== Abstract
+
+As part of the migration to Azure, the Ldap server must be moved.
+We can take this opportunity to containerize this service and move it on a container orchestrator like the kubernetes cluster.
+This new architecture change must be done carefully as this is a stateful application with a database that can be corrupted or lead to data loss.
+
+== Specification
+
+This IEP document is about running ldap on Kubernetes on Azure.
+Currently the ldap server is running on a bare metal machine and is configured by puppet.
+The objective here, is to dockerize this application in order to run it on a kubernetes cluster.
+
+As a stateful application, we must take into consideration following aspect when deploying the ldap server in production.
+
+
+=== Access
+Ldap must be accessible from inside and outside the kubernetes cluster.
+In order to reach ldap from the wild, we need a fixed public IP and only allow connection from whitelisted IP.
+This can be easily done with the kubernetes resource 'service'.
+
+[cols="1a,2a", options="header"]
+.Access
+|===
+|Inside
+|Outside
+|
+* https://accounts.jenkins.io/[Accountapp]
+|
+* https://repo.jenkins-ci.org/webapp/#/home[Artifactory]
+* https://ci.jenkins.io[ci.jenkins.io]
+* https://wiki.jenkins.io/[Confluence]
+* https://issues.jenkins-ci.org[Jira]
+* puppet master
+* spambot
+* trusted.ci
+|===
+
+
+=== Backup/Restore
+The procedure to backup/restore the database should be easy, two scripts are provided by the same docker image that run ldap. +
+Backups must be stored on an Azure File Storage in order to simplify their access from various location. +
+Backup name must respect format 'YYYYmmddHHMM'
+
+Backups and restore operation must be done in following situations:
+
+[cols="1a,2a", options="header"]
+.Backup/Restore
+|===
+|Backup
+|Restore
+| * On daily basis
+* When the application is stopping
+* On demand
+| * On demand
+|===
+
+=== Certificate
+https://issues.jenkins-ci.org/browse/INFRA-1151[INFRA-1151]
+
+Letsencrypt can be configured with two different methods
+
+*HTTP-01*
+
+HTTP-01 configuration needs an Ingress resource that listen on port 443, but this ingress resource cannot be configured to also listening port 389/636.
+It means that we need a service for listening port 389/636 unfortunately this service don't handle Letsencrypt certificate requests.
+Therefor we would need both resources type, and they can't be configured with the same public IP.
+So this method doesn't work.
+
+
+*DNS-01*
+
+DNS-01 configuration only works with Google/AWS/Cloudflare.
+
+*Conclusion*
+I didn't find an easy way to use Letsencrypt certificate from kube-lego(deprecated)/cert-manager so
+we have to go with a manual requested ssl certificate.
+
+=== Data
+The ldap database must be store on a stable storage that can be easily mounted/unmounted.
+Currently there are no perfect solutions as each solution has advantages and disadvantages.
+
+==== Dedicated Azure Disk storage
+ReadWriteOnce
+[cols="1a,2a", options="header"]
+.Dedicated Azure Disk Storage
+|===
+|+
+|-
+|
+* Persistent Data across kubernetes clusters as we only have one container running at the time.
+* We only have to restore a backup once.
+|
+* Complexify cluster upgrade, https://github.com/jenkins-infra/iep/tree/master/iep-007[iep-007],
+traffic will be redirected to the new server once the old is deleted.
+* It means downtime when we upgrade the container as we must delete the old container before starting the new one.
+|===
+
+==== Dynamic Azure Disk Storage
+ReadWriteOnce
+
+[cols="1a,2a", options="header"]
+.Dynamic Azure Disk Storage
+|===
+|+
+|-
+|
+* Persistent data associated to a cluster life cycle
+* Simplify cluster migration, new cluster can be started even if the old cluster is still running
+|
+* We must restore a backup on each new kubernetes cluster deployment
+* While migrating the cluster, we must be sure to put the old cluster in read only mode.
+|
+|===
+
+==== Azure File storage
+ReadWriteMany +
+After running some tests, I noticed bad behaviors while running openldap on CIFS partition.
+Like 'permission denied issues' even if the blob storage was mounted as a ldap user,
+or database restore that hangs forever, ...
+At the end, I decided to not invest further time into this solution.
+
+==== Conclusion
+Considering that it only takes 5seconds to backup/restore a ldap database, using a dynamic azure disk storage sounds reasonable.
+
+=== Kubernetes Design
+.Kubernetes Schema
+[source]
+....
++----------------------------------------------------------------------------------------------+
+| Namespace: Ldap                                                                              |
++----------------------------------------------------------------------------------------------+
+|                                                                                              |
+|                 +----------------------------------+    +----------------------------------+ |
++---------------+ | Statefulset: Ldap                |    | PersistentVolume: ldap-backup    | |
+|Service: Ldap  | +----------------------------------+    +----------------------------------+ |
++---------------+ |   +---------------------------+  |    | * Terraform Lifecycle            | |
+| * Ldap (389)  | |   | POD: ldap-0               |  |    | * ReadWriteMany                  | |
+| * Ldaps (636) | |   +---------------------------+  |<--------------------------------------+ |
++---------------+ |   | +----------------------+  |  |    +----------------------------------+ |
+|      |          |   | | Container: Slapd     |  |  |    | PersistentVolume: ldap-data      | |
+|      |          |   | +----------------------+  |  |    +----------------------------------+ |
+|      |          |   | | * Ldap server        |  |  |    | * ClusterLife cycle              | |
+|      +--------->|   | +----------------------+  |  |<---+ * ReadWriteOnce                  | |
+|                 |   |                           |  |    +----------------------------------+ |
+|                 |   | +----------------------+  |  |                                         |
+|                 |   | | Container: Crond     |  |  |<---+----------------------------------+ |
+|                 |   | +----------------------+  |  |    | Secret: Ldap                     | |
+|                 |   | | * Backup Task        |  |  |    +----------------------------------+ |
+|                 |   | +----------------------+  |  |    | * SSL certificate                | |
+|                 |   |                           |  |    | * Blob storage credentials       | |
+|                 |   +---------------------------+  |    | * Ldap credentials               | |
+|                 +----------------------------------+    +----------------------------------+ |
++----------------------------------------------------------------------------------------------+
+....
+
+== Motivation
+The motivation here is to benefit from both Kubernetes and Azure services advantages. +
+link:https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/[What is Kubernetes?]
+
+== Rationale
+== Costs
+In addition of the Kubernetes cluster that we are already paying for, we'll need following services
+
+* Public IP
+* LoadBalancer
+* Azure file storage account for backup
+* Disk Storage account for Data
+* Ssl certificate `Ldap.jenkins.io`
+
+== Reference implementation
+* https://github.com/jenkins-infra/ldap[Docker Container]
+* https://github.com/jenkins-infra/jenkins-infra/pull/943[Jenkins-infra PR#943]
+* https://github.com/jenkins-infra/azure/pull/45[Azure PR#45]
+* https://issues.jenkins-ci.org/browse/INFRA-1131[JIRA Issue]
