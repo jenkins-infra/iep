@@ -36,12 +36,12 @@ endif::[]
 
 == Abstract
 link:https://pkg.jenkins.io[pkg.jenkins.io] is a service that distributes Jenkins packages for various Operating Systems.
-The service is currently running on dedicated machines on AWS and rely on third party mirrors to distribute packages.
-The goal here is to identify how we can leverage the usage of our cloud environment(Azure) to have a full control on packages distributions.
+The service is currently running on dedicated machines on AWS and rely on third party link:http://mirrors.jenkins.io/status.html[mirrors] to distribute packages.
+The goal here is to identify how we can leverage the usage of our cloud environment(Azure) to have a full control on packages distribution.
 
 == Specification
 === Data
-Artifacts must be store on Azure container link:https://github.com/jenkins-infra/azure/blob/master/plans/releases-storage.tf[storage] and contain packages for following distributions:
+Artifacts must be store on Azure container link:https://github.com/jenkins-infra/azure/blob/master/plans/releases-storage.tf[storage] and must host packages for following distributions:
 
 * Debian/Ubuntu
 * Redhat
@@ -84,9 +84,9 @@ IMPORTANT: As we don't want to rely on local mirrors anymore, we must take into 
 == Motivation
 The motivations are multiple:
 
-1. Use more efficiently our cloud environment.
-2. Have a better control on the packages that we distribute.
-3. Don't rely on mirrors.jenkins.io and third party mirrors.
+1. Do not rely on third party link:http://mirrors.jenkins.io/status.html[mirrors].
+2. Use more efficiently our cloud environment.
+3. Have a better control on the packages that we distribute.
 
 == Rationale
 === Mirrors
@@ -104,6 +104,7 @@ We still have to evaluate how expensive it would be.
 === One service by region
 We could also duplicate the service in different locations.
 This also means having different kubernetes clusters, which could improve the high availibility of others services like link:https://plugins.jenkins.io[Pluginsite] or link:https://jenkins.io[Jenkins.io]
+This solution could be less expensive than the CDN approach.
 
 == Costs
 The three main costs are:
