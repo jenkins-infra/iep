@@ -14,7 +14,7 @@ endif::[]
 [cols="2"]
 |===
 | IEP
-| X
+| 10
 
 | Title
 | Update Center on Azure
