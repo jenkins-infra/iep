@@ -1,0 +1,142 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-12: Jenkins Release Management
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 12
+
+| Title
+| Jenkins Release Management
+
+| Author
+| link:https://github.com/olblak[Olivier Vernin]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| [Architecture]
+
+| Created
+| 2018-07-25
+|===
+
+
+== Abstract
+In a matter of continuously improving Jenkins infrastructure project, it's now time to address how Jenkins is released and distributed.
+Currently new version can only be signed and published by link:https://github.com/kohsuke[Kohsuke], which brings a lot of responsibilities on his shoulder and prevent the project to release new version when needed.
+So the purpose of this document is to design a secure and clear way to allow trusted people to trigger a new release.
+
+== Specification
+We can split the process of releasing a new version into the following elements:
+
+* Build
+** Build a link:https://github.com/jenkinsci/jenkins[Jenkins] package
+** Sign JARS/WAR
+* Publish a link:http://mirrors.jenkins.io/war-stable/latest/jenkins.war[Jenkins] package
+* Build Distribution Packages
+** Debian, RedHat, Windows, etc.
+* Publish Distribution Packages
+
+=== Build
+==== Permission
+We need a tool available to a subset of trusted people to build and release new version on demand and trusted.ci seems appropriated for the task.
+This means as of today (2018-07-24), following people will be able to trigger a new release on demand. This list should be regularly reviewed and updated.
+
+.Jenkins Admin
+[cols="3*"]
+|===
+| ogondza 
+| link:http://github.com/abayer[abayer]
+| link:https://github.com/aheritier[aheritier]
+| link:https://github.com/daniel-beck[danielbeck]
+| link:https://github.com/kohsuke[kohsuke]
+| lshatzer
+| link:https://github.com/olblak[olblak]
+| https://github.com/orrc[orrc]
+| https://github.com/rtyler[tyler]
+|===
+
+==== Jenkins
+
+Maven with the link:http://maven.apache.org/maven-release/maven-release-plugin/[release plugin] is use to build Jenkins(link:https://wiki.jenkins.io/pages/viewpage.action?pageId=3309681[why?]).
+
+In order to successfully build the application, we must:
+
+****
+. Download the GPG key from an encrypted Azure blog storage.
+. Download the private/public SSL certificate from Azure Key Vault
+. Retrieve password to unlock the gpg key and the certificate from Azure Key Vault.
+. Prepare the release with Maven ```mvn release:prepare```
+. Perform the release with Maven ```mvn release:perform```
+. Upload the signed war artifact on the azure blob storage but only if it doesn't exist yet.
+****
+
+==== Package
+
+The Jenkins project provides signed packages for Debian, Redhat, Suse, MacOSX and Windows.
+
+Because building a new Jenkins version can take quite a lot of time, the link://https://github.com/jenkinsci/packaging[packaging] process must be decoupled from the building process. 
+This allow a Jenkins administrator to build and publish a war file in advance and only generate and publish distribution packages when needed.
+It also reduces the blast radius of an error happening in a Jenkins job once the war file is build and published.
+
+Packaging a new version means following steps:
+****
+. Retrieve latest git tag from link:/https://github.com/jenkinsci/jenkins[jenkinsci/jenkins].
+. Download the war version from an azure blob storage based on the version.
+. Build one package per distribution if it wasn't already published.
+. Publish one package per distribution.
+****
+
+==== Release
+We identify five different release types:
+
+1. link:http://mirrors.jenkins.io/war-stable/[LTS]: Done almost once a month and is the most stable version.
+2. link:http://mirrors.jenkins.io/war-stable-rc/[LTS-RC]: Represent the futur stable version.
+3. link:http://mirrors.jenkins.io/war/[Weekly]: Done once a week and represent the most up to date version.
+4. link:http://mirrors.jenkins.io/war-rc/[Weekly-RC]: Not used anymore, but still contain old releases.
+5. Security Release: Regularly the security officer needs to build a "private" version from jenkinsci-cert/jenkins to do some testing or to share with other security contributors, once ready then merge successful version into link:/https://github.com/jenkinsci/jenkins[jenkinsci/jenkins] 
+
+<WIP>
+Currently we only have two maven release profile, 'release' and 'lts-release' 
+</WIP>
+
+==== Credentials
+In order to release and publish new releases, we need several credentials.
+
+A GPG key is used to sign War files and must be stored on an encrypted azure blob storage. The password used to decrypt the gpg key will be stored on an Azure Key Vault.
+
+A SSL certificate is required to sign 'jar' and will be stored directly on the Azure Key Vault, included the password to decrypt the certificate. The password can also be configured at the Jenkins instance level if we consider that It's better from a security point of view to not store both the certificate key and the password at the same place.
+
+A ssh key is needed with push permission on link:https://github.com/jenkinsci/jenkins[jenkinsci/jenkins] repository.
+
+An Azure storage account key is needed to publish some distribution packages to the link:https://github.com/jenkins-infra/azure/blob/master/plans/releases-storage.tf[Azure Blob Storage].
+
+<WIP>
+Any other credential? (Artifactory?)
+</WIP>
+
+== Rationale
+<WIP>
+
+== Costs
+No major additional cost will be generated by these changes.
+
+== Reference implementation
+* link:http://lists.jenkins-ci.org/pipermail/jenkins-infra/2018-June/001448.html[Mail Thread]
+* link:https://support.cloudbees.com/hc/en-us/articles/222838288-ssh-credentials-management-with-jenkins[SSH credentials configuration]
+* link:https://batmat.net/2017/01/30/do-not-run-your-tests-in-continuous-integration-with-the-root-user/[Do not run your tests with root user]
+* link:https://github.com/jenkinsci/jenkins/blob/master/BUILDING.TXT[Build Jenkins]
+* link:https://github.com/olblak/jenkins/blob/master/Jenkinsfile.release[Release Jenkinsfile Prototype]
+* link:https://gist.github.com/kohsuke/3319b65432ab40793eadc297e2456b79[Release Script]
