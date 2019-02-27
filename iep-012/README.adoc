@@ -49,7 +49,7 @@ Building, testing, releasing new jenkins version covers different topics which n
 
 === Provisioning
 Obviously the first element to agree on, is where to run those environments and how to provision them.
-Today, the Jenkins Infrastructure project mainly use an Azure account provisioned from some Terraform code located link:https://github.com/jenkins-infa/azure[here]. This repository make it easy for everybody to participate either by auditing, improving, or even simply learning. So we just have to decide on the services that we need there.
+Today, the Jenkins Infrastructure project mainly use an Azure account provisioned from some Terraform code located link:https://github.com/jenkins-infra/azure[here]. This repository make it easy for everybody to participate either by auditing, improving, or even simply learning. So we just have to decide on the services that we need there.
 
 Before going further, we must clarify that while we try to be as open as possible, we still need to have some element well hardened, to avoid malicious person to abuse our systems or to steal private information like keys. To avoid this situation, we need two level of security accesses, one infrastructure reachable for all contributors to have quick feedback on test results and another one with limited access from the internet for either security contributors or the release officer.
 
@@ -74,7 +74,7 @@ The latter solution open the door to more secure but also more complex infrastru
 Both can be used depending on the environment.
 
 
-This link:https://github.com/jenkins-infra/azure[PR] partially implements this design
+This link:https://github.com/jenkins-infra/azure/pull/75[PR] partially implements this design
 
 === Configuration
 Now that our infrastructure provisioning is defined, we can look at how we'll configure and the benefit of using Kubernetes for such build environment.
