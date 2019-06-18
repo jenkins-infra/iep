@@ -1,0 +1,117 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+= IEP-11: 
+
+:toc:
+
+.Metadata
+[cols="2"]
+|===
+| IEP
+| 11
+
+| Title
+| Download packages from Azure
+
+| Author
+| link:https://github.com/olblak[Olivier Vernin]
+
+| Status
+| :speech_balloon: In-process
+
+| Type
+| Architecture
+
+| Created
+| 2018-06-01
+|===
+
+
+
+== Abstract
+link:https://pkg.jenkins.io[pkg.jenkins.io] is a service that distributes Jenkins packages for various Operating Systems.
+The service is currently running on dedicated machines on AWS and rely on third party link:http://mirrors.jenkins.io/status.html[mirrors] to distribute packages.
+The goal here is to identify how we can leverage the usage of our cloud environment(Azure) to have a full control on packages distribution.
+
+== Specification
+=== Data
+Artifacts must be store on Azure container link:https://github.com/jenkins-infra/azure/blob/master/plans/releases-storage.tf[storage] and must host packages for following distributions:
+
+* Debian/Ubuntu
+* Redhat
+* OpenSuse
+* Windows
+* Mac OSX
+* Java Package (WAR)
+
+The way packages are upload on those azure container storage still need to be adressed in another IEP document.
+
+=== Endpoint
+The service will listen on two different endpoints:
+
+* 'pkg.jenkins.io' which accept HTTP/HTTPS requests
+* 'download.jenkins.io' which always redirect HTTP to HTTPS
+
+'download.jenkins.io' will be the new default endpoint and for people who explicitly need a HTTP endpoint, pkg.jenkins.io will be provided as a fallback.
+
+=== Service
+The service will be a web proxy deployed on Kubernetes and it will provide packages for all supported distributions.
+
+.Kubernetes Service Schema
+----
+  +----------------------------+
+  | Ingress:                   |
+  |  +----------------------+  |        +--------------------+        +------------------------+
+  |  | /debian              +---------->| Service: Debian    +------->| Deployment: Debian     |
+  |  +----------------------+  |        +--------------------+        +------------------------+
+  |  +----------------------+  |        +--------------------+        +------------------------+
+  |  | /redhat              +---------->| Service: RedHat    +------->| Deployment: RedHat     |
+  |  +----------------------+  |        +--------------------+        +------------------------+
+  |  +----------------------+  |        +--------------------+        +------------------------+
+  |  | /opensuse            +---------->| Service: OpenSuse  +------->| Deployment: Opensuse   |
+  |  +----------------------+  |        +--------------------+        +------------------------+
+  +----------------------------+
+----
+
+IMPORTANT: As we don't want to rely on local mirrors anymore, we must take into account the user experience when downloading packages from pkg.jenkins.io.
+
+== Motivation
+The motivations are multiple:
+
+1. Do not rely on third party link:http://mirrors.jenkins.io/status.html[mirrors].
+2. Use more efficiently our cloud environment.
+3. Have a better control on the packages that we distribute.
+
+== Rationale
+=== Mirrors
+One of the solution would be to deploy http://mirrorbrain.org/[mirrorbrain] and keep relying on third party link:http://mirrors.jenkins.io/status.html[mirrors].
+This wouldn't change too much the current design, excepted that we can use cheaper infrastructure and rely more on the community.
+The downside of this approach are:
+
+* We don't control third party mirrors which means that when issues appear on them, we can't fix them. We can only remove those mirrors from the link:http://mirrors.jenkins.io/status.html[list] until issues are fixed.
+* We are still vulnerable to link:https://www2.cs.arizona.edu/stork/packagemanagersecurity/faq.html[MiTM] attack
+
+=== CDN
+We could use a link:https://azure.microsoft.com/en-us/services/cdn/[CDN] to distribute packages, the only downside is the cost of such services. 
+We still have to evaluate how expensive it would be.
+
+=== One service by region
+We could also duplicate the service in different locations.
+This also means having different kubernetes clusters, which could improve the high availibility of others services like link:https://plugins.jenkins.io[Pluginsite] or link:https://jenkins.io[Jenkins.io]
+This solution could be less expensive than the CDN approach.
+
+== Costs
+The three main costs are:
+
+* Kubernetes shared cluster
+* Azure Blob storage
+* Network bandwith
+
+== Reference implementation
+No same implementation.
