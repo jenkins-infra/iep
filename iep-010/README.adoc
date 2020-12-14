@@ -44,7 +44,7 @@ Currently the service is running on an EC2 instance and it's composed of the fol
 * An apache webserver that listen on two endpoints.
 ** link:http://updates.jenkins-ci.org[updates.jenkins-ci.org]
 ** link:http://updates.jenkins.io[updates.jenkins.io]
-* A data directory populated by a shell script ``link:https://github.com/jenkins-infra/update-center2/blob/master/site/generate.sh[generate.sh]`` which is run every 15 minutes from trusted.ci. This script uploads datas via rsync on a linux a machine.
+* A data directory populated by a shell script ``link:https://github.com/jenkins-infra/update-center2/blob/master/site/generate.sh[generate.sh]`` which is run every 4 minutes from trusted.ci. This script uploads datas via rsync on a linux a machine.
 
 Although the current architecture is quiete stable, there are still places for improvements.
 
@@ -79,4 +79,3 @@ It's mainly the network bandwith which is affected by 'update-center.json' file 
 == Reference implementation
 This design follow the same idea than link:https://github.com/jenkins-infra/iep/tree/master/iep-006[jenkins.io], data on a blob storage and a proxy container on kubernetes.
 The only difference here would be the usage of an apache proxy instead of nginx.
-
